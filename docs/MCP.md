@@ -1,7 +1,8 @@
 # MCP client setup
 
-Bond-OpenAI speaks standard MCP over stdin/stdout. Keep the server local and
-let the client launch it on demand.
+Bond-OpenAI speaks standard MCP over stdin/stdout. The MCP process remains
+local; its provider can be either a local Fredo runtime or the operator-hosted
+zero-credential demo relay.
 
 ## Codex
 
@@ -53,3 +54,10 @@ supports a stdio server.
   cancellation.
 
 The MCP never returns shell instructions, credentials or raw transcripts.
+
+## No-credential demo mode
+
+When `demo/profile.json` contains a relay URL and scoped demo token, the first
+`uv run bond-mcp serve` automatically selects the `demo` provider. Jury users
+do not create a Twilio account, create a Deepgram account, or edit `.env`.
+Provider keys exist only on the relay. See [DEMO-RELAY.md](DEMO-RELAY.md).

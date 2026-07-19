@@ -1,0 +1,17 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /uvx /bin/
+
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY src ./src
+
+RUN uv sync --frozen --no-dev
+
+ENV FREDO_HOST=0.0.0.0
+ENV FREDO_PORT=8080
+ENV FREDO_STATE_DIR=/data
+ENV FREDO_TELEPHONY_PROVIDER=real
+
+EXPOSE 8080
+CMD ["uv", "run", "bond-mcp", "relay"]

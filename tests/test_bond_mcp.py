@@ -3,8 +3,13 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+import httpx
+from starlette.testclient import TestClient
+
 from bond_mcp.cli import main
+from bond_mcp.demo_relay import DemoRelay
 from bond_mcp.policy import Policy, PolicyError, build_task, classify
+from bond_mcp.providers import DemoProvider
 from bond_mcp.server import McpServer
 from bond_mcp.store import IdempotencyConflict, TaskStore
 from fredo.agent_config import build_agent_settings
@@ -31,6 +36,94 @@ def test_voice_agent_uses_typed_language_for_greeting() -> None:
     settings = build_agent_settings(Settings(deepgram_api_key="test"), "Réserver une table", "fr")
     assert settings.agent.greeting.startswith("Bonjour")
     assert "Speak French" in settings.agent.think.prompt
+
+
+def test_settings_auto_select_demo_without_provider_keys() -> None:
+    settings = Settings.from_env(
+        {
+            "FREDO_DEMO_ENDPOINT": "https://relay.example",
+            "FREDO_DEMO_ACCESS_TOKEN": "public-demo",
+        }
+    )
+    assert settings.telephony_provider == "demo"
+    assert settings.missing_for_real_call() == []
+    assert settings.public_summary()["demo_configured"] is True
+
+
+def test_demo_provider_keeps_provider_keys_out_of_client_contract() -> None:
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "POST" and request.url.path == "/v1/calls":
+            return httpx.Response(200, json={"call_id": "remote-1"})
+        if request.method == "GET":
+            return httpx.Response(200, json={"status": "completed"})
+        return httpx.Response(200, json={"status": "cancelled"})
+
+    provider = DemoProvider(
+        "https://relay.example",
+        "public-demo",
+        transport=httpx.MockTransport(handler),
+    )
+    task = build_task(
+        {
+            "task_id": "demo-task",
+            "caller_identity": "Gab",
+            "destination_phone": "+33600000000",
+            "call_goal": "Reserve a table",
+            "consent_confirmed": True,
+            "confirmed": True,
+            "idempotency_key": "demo-key",
+        },
+        Policy(frozenset({"+33600000000"})),
+    )
+    assert asyncio.run(provider.create_call(task, "local-1")) == "remote-1"
+    assert asyncio.run(provider.get_status("remote-1")) == "completed"
+    asyncio.run(provider.cancel_call("remote-1"))
+    assert all(request.headers["authorization"] == "Bearer public-demo" for request in requests)
+    assert all("DEEPGRAM" not in str(request.content) for request in requests)
+
+
+def test_demo_relay_requires_token_and_refreshes_status(tmp_path: Path) -> None:
+    class FakeProvider:
+        async def create_call(self, task, call_id):
+            del task, call_id
+            return "remote-1"
+
+        async def get_status(self, provider_call_id):
+            del provider_call_id
+            return "completed"
+
+        async def cancel_call(self, provider_call_id):
+            del provider_call_id
+
+    settings = Settings(
+        telephony_provider="mock",
+        demo_access_token="public-demo",
+        allowed_numbers=frozenset({"+33600000000"}),
+        state_dir=tmp_path,
+    )
+    relay = DemoRelay(settings, TaskStore(tmp_path / "relay.sqlite3"), FakeProvider())
+    with TestClient(relay.app()) as client:
+        body = {
+            "task": {
+                "task_id": "relay-task",
+                "caller_identity": "Gab",
+                "destination_phone": "+33600000000",
+                "call_goal": "Reserve a table",
+                "consent_confirmed": True,
+                "confirmed": True,
+                "idempotency_key": "relay-key",
+            }
+        }
+        assert client.post("/v1/calls", json=body).status_code == 401
+        headers = {"Authorization": "Bearer public-demo"}
+        created = client.post("/v1/calls", json=body, headers=headers)
+        assert created.status_code == 200
+        call_id = created.json()["call_id"]
+        status = client.get(f"/v1/calls/{call_id}", headers=headers)
+        assert status.json()["status"] == "completed"
 
 
 def test_policy_requires_consent_and_exact_allowlist() -> None:

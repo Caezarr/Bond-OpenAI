@@ -1,0 +1,5 @@
+{
+  "endpoint": "https://your-relay.example.com",
+  "access_token": "public-demo-token",
+  "profile": "public-demo"
+}
