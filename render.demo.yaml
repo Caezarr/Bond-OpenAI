@@ -2,13 +2,11 @@ services:
   - type: web
     name: bond-openai-demo-relay
     runtime: docker
-    plan: starter
+    # Free is sufficient for the one-day demo. The relay keeps only ephemeral
+    # call state; provider credentials remain in Render's secret environment.
+    plan: free
     dockerfilePath: ./deploy/Dockerfile.relay
     healthCheckPath: /healthz
-    disk:
-      name: bond-openai-relay-state
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: FREDO_TELEPHONY_PROVIDER
         value: real
@@ -17,7 +15,7 @@ services:
       - key: FREDO_PORT
         value: 10000
       - key: FREDO_STATE_DIR
-        value: /data
+        value: /tmp/fredo-state
       - key: FREDO_MAX_DURATION_SECONDS
         value: 180
       - key: FREDO_MAX_CONCURRENT_CALLS
