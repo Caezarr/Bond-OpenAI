@@ -10,6 +10,7 @@ from fredo.settings import Settings
 from .models import TaskState
 from .policy import Policy, PolicyError, build_task, classify
 from .providers import FredoProvider
+from .runtime import RuntimeThread
 from .store import TaskStore
 
 
@@ -22,6 +23,13 @@ class McpServer:
         )
         self.store = TaskStore(store_path or self.settings.state_dir / "bond_tasks.sqlite3")
         self.provider = FredoProvider.from_settings(self.settings)
+        self.runtime: RuntimeThread | None = None
+
+    def start_runtime(self) -> None:
+        """Start the local Twilio/Deepgram callback runtime beside stdio MCP."""
+        if self.runtime is None:
+            self.runtime = RuntimeThread(self.settings, self.store)
+            self.runtime.start()
 
     async def handle(self, message: dict[str, Any]) -> dict[str, Any] | None:
         method = message.get("method")

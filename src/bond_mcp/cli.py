@@ -30,7 +30,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         import asyncio
 
-        asyncio.run(run_stdio(McpServer()))
+        server = McpServer()
+        server.start_runtime()
+        asyncio.run(run_stdio(server))
         return 0
     if args.command == "install":
         config = _config()

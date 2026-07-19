@@ -48,6 +48,13 @@ class TaskStore:
             row = db.execute("SELECT result FROM phone_tasks WHERE call_id = ?", (call_id,)).fetchone()
         return PhoneResult(**_decode_result(row[0])) if row else None
 
+    def get_task(self, call_id: str) -> PhoneTask | None:
+        with sqlite3.connect(self.path) as db:
+            row = db.execute("SELECT payload FROM phone_tasks WHERE call_id = ?", (call_id,)).fetchone()
+        if not row:
+            return None
+        return PhoneTask(**json.loads(row[0]))
+
     def update(self, result: PhoneResult) -> PhoneResult:
         with self._lock, sqlite3.connect(self.path) as db:
             db.execute("UPDATE phone_tasks SET result = ? WHERE call_id = ?", (json.dumps(asdict(result)), result.call_id))
