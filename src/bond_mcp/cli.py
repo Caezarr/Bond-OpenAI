@@ -14,6 +14,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bond-mcp", description="Local Bond-OpenAI phone MCP")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("serve", help="Run the MCP over stdio")
+    sub.add_parser("relay", help="Run the operator-hosted zero-credential demo relay")
     doctor = sub.add_parser("doctor", help="Check local readiness")
     doctor.add_argument("--json", action="store_true")
     install = sub.add_parser("install", help="Generate an MCP client configuration")
@@ -36,6 +37,14 @@ def main(argv: list[str] | None = None) -> int:
         server = McpServer()
         server.start_runtime()
         asyncio.run(run_stdio(server))
+        return 0
+    if args.command == "relay":
+        import uvicorn
+
+        from .demo_relay import create_demo_relay_app
+
+        settings = Settings.from_env()
+        uvicorn.run(create_demo_relay_app(settings), host=settings.host, port=settings.port)
         return 0
     if args.command == "install":
         config = _config()
