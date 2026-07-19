@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fredo.settings import Settings
 
@@ -15,6 +16,12 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("serve", help="Run the MCP over stdio")
     sub.add_parser("relay", help="Run the operator-hosted zero-credential demo relay")
+    demo = sub.add_parser("demo", help="Manage the public zero-credential demo profile")
+    demo_sub = demo.add_subparsers(dest="demo_command", required=True)
+    configure = demo_sub.add_parser("configure", help="Publish a relay URL and scoped demo token")
+    configure.add_argument("--endpoint", required=True, help="Public HTTPS relay URL")
+    configure.add_argument("--token", required=True, help="Scoped public demo token")
+    configure.add_argument("--force", action="store_true", help="Replace the existing profile")
     doctor = sub.add_parser("doctor", help="Check local readiness")
     doctor.add_argument("--json", action="store_true")
     install = sub.add_parser("install", help="Generate an MCP client configuration")
@@ -45,6 +52,33 @@ def main(argv: list[str] | None = None) -> int:
 
         settings = Settings.from_env()
         uvicorn.run(create_demo_relay_app(settings), host=settings.host, port=settings.port)
+        return 0
+    if args.command == "demo":
+        if args.demo_command != "configure":
+            return 2
+        parsed = urlsplit(args.endpoint)
+        if parsed.scheme != "https" or not parsed.netloc:
+            print("Demo relay endpoint must be a public HTTPS URL", file=sys.stderr)
+            return 2
+        if len(args.token) < 16:
+            print("Demo token must be at least 16 characters", file=sys.stderr)
+            return 2
+        profile_path = Path.cwd() / "demo" / "profile.json"
+        if profile_path.exists() and not args.force:
+            current = json.loads(profile_path.read_text(encoding="utf-8"))
+            if current.get("endpoint") or current.get("access_token"):
+                print(f"Refusing to overwrite existing demo profile: {profile_path}", file=sys.stderr)
+                return 2
+        profile_path.parent.mkdir(parents=True, exist_ok=True)
+        profile_path.write_text(
+            json.dumps(
+                {"endpoint": args.endpoint.rstrip("/"), "access_token": args.token, "profile": "public-demo"},
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        print(f"Published demo profile at {profile_path}")
         return 0
     if args.command == "install":
         config = _config()

@@ -398,3 +398,31 @@ def test_install_writes_only_an_explicit_new_path(tmp_path: Path) -> None:
     assert main(["install", "--client", "codex", "--write", str(target)]) == 0
     assert '"bond-openai"' in target.read_text(encoding="utf-8")
     assert main(["install", "--client", "codex", "--write", str(target)]) == 2
+
+
+def test_demo_configure_writes_public_profile_without_overwriting(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert main(
+        [
+            "demo",
+            "configure",
+            "--endpoint",
+            "https://relay.example",
+            "--token",
+            "public-demo-token-1234",
+        ]
+    ) == 0
+    profile = (tmp_path / "demo" / "profile.json").read_text(encoding="utf-8")
+    assert "relay.example" in profile
+    assert main(
+        [
+            "demo",
+            "configure",
+            "--endpoint",
+            "https://other.example",
+            "--token",
+            "public-demo-token-1234",
+        ]
+    ) == 2
