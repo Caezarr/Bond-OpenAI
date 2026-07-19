@@ -39,6 +39,51 @@ def test_voice_agent_uses_typed_language_for_greeting() -> None:
     assert "Speak French" in settings.agent.think.prompt
 
 
+def test_flux_endpointing_is_applied_to_listen_provider() -> None:
+    settings = Settings(
+        deepgram_api_key="test",
+        eot_threshold=0.85,
+        eot_timeout_ms=9000,
+        eager_eot_threshold=0.4,
+    )
+    provider = build_agent_settings(settings, "Reserve a table", "en").agent.listen.provider
+    dumped = provider.model_dump()
+    assert dumped["eot_threshold"] == 0.85
+    assert dumped["eot_timeout_ms"] == 9000
+    assert dumped["eager_eot_threshold"] == 0.4
+
+
+def test_flux_endpointing_omits_eager_when_unset() -> None:
+    provider = build_agent_settings(
+        Settings(deepgram_api_key="test"), "Reserve a table", "en"
+    ).agent.listen.provider
+    assert provider.model_dump().get("eager_eot_threshold") is None
+
+
+def test_settings_reject_out_of_range_endpointing() -> None:
+    try:
+        Settings.from_env({"FREDO_EOT_THRESHOLD": "0.2", "FREDO_MAX_CONCURRENT_CALLS": "1"})
+    except ValueError as exc:
+        assert "FREDO_EOT_THRESHOLD" in str(exc)
+    else:
+        raise AssertionError("out-of-range EOT threshold must fail closed")
+
+
+def test_settings_reject_eager_above_eot() -> None:
+    try:
+        Settings.from_env(
+            {
+                "FREDO_EOT_THRESHOLD": "0.6",
+                "FREDO_EAGER_EOT_THRESHOLD": "0.8",
+                "FREDO_MAX_CONCURRENT_CALLS": "1",
+            }
+        )
+    except ValueError as exc:
+        assert "FREDO_EAGER_EOT_THRESHOLD" in str(exc)
+    else:
+        raise AssertionError("eager threshold above eot must fail closed")
+
+
 def test_settings_auto_select_demo_without_provider_keys() -> None:
     settings = Settings.from_env(
         {
