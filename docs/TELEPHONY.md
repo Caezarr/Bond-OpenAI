@@ -14,9 +14,7 @@ uses Twilio. Desktop caller-ID “spoofing” is neither required nor supported.
 Fredo accepts only a request already checked for:
 
 - structurally valid, unexpired local MCP task fields;
-- canonical E.164;
-- French +336/+337 class;
-- exact local allowlist membership;
+- canonical E.164 destination in the operator's exact allowlist;
 - explicit recipient consent;
 - native confirmation;
 - one active call;
