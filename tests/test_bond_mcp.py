@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+from bond_mcp.cli import main
 from bond_mcp.policy import Policy, PolicyError, build_task, classify
 from bond_mcp.server import McpServer
 from bond_mcp.store import TaskStore
@@ -92,3 +93,10 @@ def test_create_returns_preview_before_confirmation(tmp_path: Path) -> None:
     )
     data = response["result"]["structuredContent"]
     assert data["status"] == "needs_confirmation"
+
+
+def test_install_writes_only_an_explicit_new_path(tmp_path: Path) -> None:
+    target = tmp_path / "codex-mcp.json"
+    assert main(["install", "--client", "codex", "--write", str(target)]) == 0
+    assert '"bond-openai"' in target.read_text(encoding="utf-8")
+    assert main(["install", "--client", "codex", "--write", str(target)]) == 2
