@@ -6,7 +6,7 @@ Status: implementation contract
 ## Slash goal
 
 ```text
-/gsd-autonomous Build the complete Bond-OpenAI local MCP repository from GOAL-BOND-MCP.md. Implement the generic phone-task layer, the Fredo provider adapter, the Bond/Codex MCP tools, one-command bootstrap and client installation, policy and consent gates, call lifecycle/status persistence, documentation, tests, and a live-test checklist. Work feature-by-feature on focused branches and open one PR per feature; if GitHub access is unavailable, leave each branch and commit PR-ready and report the exact blocker. Do not add a marketplace, hosted deployment, or vendor-specific platform layer. Do not claim completion until the repository is clean, the offline test/build/audit gates pass, and only environment variables plus controlled live-provider verification remain.
+/gsd-autonomous Build the complete Bond-OpenAI local MCP repository from GOAL-BOND-MCP.md. Implement the generic phone-task layer, the Fredo provider adapter, the Bond/Codex MCP tools, one-command bootstrap and client installation, policy and consent gates, call lifecycle/status persistence, the zero-credential operator demo relay, documentation, tests, and a live-test checklist. Work feature-by-feature on focused branches and open one PR per feature; if GitHub access is unavailable, leave each branch and commit PR-ready and report the exact blocker. Do not add a marketplace or Bond-specific hosted dependency. Keep Twilio and Deepgram credentials relay-only, and make a configured public demo profile require no end-user API key. Do not claim completion until the repository is clean, the offline test/build/audit gates pass, and only one-time operator relay configuration plus controlled live-provider verification remain.
 ```
 
 ## End state
@@ -49,14 +49,15 @@ Bond / Codex / MCP client
 Bond-OpenAI task layer
   classify → clarify → policy → preview → lifecycle
           ↓ provider interface
-Fredo phone provider
+Fredo phone provider (local or operator relay)
   Twilio verified caller + Deepgram voice agent
           ↓
 Structured terminal result
 ```
 
-GitHub is only the distribution channel. The runtime must work from a local
-clone without a hosted endpoint or marketplace account.
+GitHub is only the distribution channel. The MCP runtime works from a local
+clone; the optional zero-credential demo relay is an operator-controlled
+provider boundary, not a marketplace or a Bond dependency.
 
 ## Requirements
 
@@ -155,8 +156,14 @@ bond-mcp serve
 `install` must be explicit about files it writes, support a print-only mode,
 and never overwrite an existing client configuration without confirmation.
 
+When the public `demo/profile.json` is configured, the same commands must
+select the demo relay automatically. End users must not need provider
+credentials or a local `.env` for the jury flow.
+
 The first run installs pinned dependencies and verifies required local tools.
-Provider credentials are read only from an ignored `.env` or local secret store.
+Local provider credentials are read only from an ignored `.env` or local secret
+store. In demo mode they exist only on the operator relay; end-user machines
+use the public profile and never receive them.
 
 ### R7 — Configuration
 
@@ -173,6 +180,11 @@ FREDO_ENDPOINT_SECRET
 
 No credential is committed, printed, placed in a task payload or embedded in a
 client configuration generated for Bond/Codex.
+
+The demo relay may expose a narrowly scoped public demo token in
+`demo/profile.json`; it is not a provider credential and is protected by relay
+allowlist, consent, rate and duration gates. Twilio and Deepgram credentials
+remain relay-only.
 
 ### R8 — Documentation
 
@@ -239,7 +251,8 @@ must describe one local MCP product, not an earlier provider experiment.
 
 - no obsolete marketplace/deployment/provider references in public docs;
 - no secret, `.env`, local database, transcript, recording or old Git history;
-- no runtime dependency on a hosted endpoint;
+- local mode has no runtime dependency on a hosted endpoint; demo mode uses
+  only the operator-controlled relay documented in `docs/DEMO-RELAY.md`;
 - `git clone` followed by bootstrap reaches the CLI.
 
 ### A1 — MCP contract
@@ -270,6 +283,7 @@ must describe one local MCP product, not an earlier provider experiment.
 ### A4 — Installation
 
 - a fresh macOS clone starts with the documented commands;
+- a configured public demo profile requires no end-user API key;
 - Codex connects after one generated configuration step;
 - Bond connects after one generated configuration step;
 - a generic MCP client can use `--print` output;

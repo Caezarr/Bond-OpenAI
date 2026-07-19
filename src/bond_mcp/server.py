@@ -9,7 +9,7 @@ from fredo.settings import Settings
 
 from .models import TaskState
 from .policy import Policy, PolicyError, build_task, classify
-from .providers import FredoProvider
+from .providers import DemoProvider, PhoneProvider, provider_from_settings
 from .runtime import RuntimeThread
 from .store import ActiveCall, IdempotencyConflict, TaskStore
 
@@ -22,12 +22,12 @@ class McpServer:
             max_duration_seconds=self.settings.max_duration_seconds,
         )
         self.store = TaskStore(store_path or self.settings.state_dir / "bond_tasks.sqlite3")
-        self.provider = FredoProvider.from_settings(self.settings)
+        self.provider: PhoneProvider = provider_from_settings(self.settings)
         self.runtime: RuntimeThread | None = None
 
     def start_runtime(self) -> None:
         """Start the local Twilio/Deepgram callback runtime beside stdio MCP."""
-        if self.runtime is None:
+        if self.runtime is None and not isinstance(self.provider, DemoProvider):
             self.runtime = RuntimeThread(self.settings, self.store)
             self.runtime.start()
 
@@ -97,6 +97,7 @@ class McpServer:
                 result = self.store.get(str(args.get("call_id", "")))
                 if result is None:
                     raise PolicyError("not_found", "Unknown call_id")
+                await self._refresh_provider_status(result)
                 return self._tool_result(request_id, result.as_dict())
             if name == "bond.cancel_phone_task":
                 result = self.store.get(str(args.get("call_id", "")))
@@ -112,6 +113,38 @@ class McpServer:
         except (PolicyError, IdempotencyConflict, ActiveCall) as exc:
             code = getattr(exc, "code", "idempotency_conflict" if isinstance(exc, IdempotencyConflict) else "call_busy")
             return self._tool_result(request_id, {"status": "error", "code": code, "message": str(exc)}, is_error=True)
+
+    async def _refresh_provider_status(self, result) -> None:
+        if not result.provider_call_id or result.status in {
+            TaskState.COMPLETED,
+            TaskState.NO_ANSWER,
+            TaskState.DECLINED,
+            TaskState.FAILED,
+            TaskState.CANCELLED,
+        }:
+            return
+        try:
+            provider_status = await self.provider.get_status(result.provider_call_id)
+        except Exception:
+            return
+        mapped = {
+            "queued": TaskState.DIALING,
+            "initiated": TaskState.DIALING,
+            "ringing": TaskState.DIALING,
+            "dialing": TaskState.DIALING,
+            "in-progress": TaskState.IN_PROGRESS,
+            "in_progress": TaskState.IN_PROGRESS,
+            "completed": TaskState.COMPLETED,
+            "busy": TaskState.DECLINED,
+            "no-answer": TaskState.NO_ANSWER,
+            "no_answer": TaskState.NO_ANSWER,
+            "canceled": TaskState.CANCELLED,
+            "cancelled": TaskState.CANCELLED,
+            "failed": TaskState.FAILED,
+        }.get(provider_status)
+        if mapped and mapped != result.status:
+            result.status = mapped
+            self.store.update(result)
 
     @staticmethod
     def _result(request_id: Any, result: Any) -> dict[str, Any]:

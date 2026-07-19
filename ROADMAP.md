@@ -15,7 +15,8 @@
 - one MCP configuration snippet for Bond;
 - one MCP configuration snippet for Codex;
 - documented generic stdio transport;
-- doctor command with redacted diagnostics.
+- doctor command with redacted diagnostics;
+- zero-credential demo profile auto-selects the operator relay.
 
 ## P2 — Product proof
 
@@ -27,5 +28,7 @@
 ## P3 — Provider adapters
 
 - keep Fredo as the default phone executor;
+- expose a deployment-ready operator relay so jury machines never receive
+  carrier or voice-provider credentials;
 - add a provider interface for another carrier or local voice engine;
 - never couple the MCP contract to one vendor.

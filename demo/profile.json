@@ -1,0 +1,6 @@
+{
+  "endpoint": "",
+  "access_token": "",
+  "profile": "public-demo",
+  "note": "The operator fills the endpoint and rotates the scoped demo token after deploying the relay."
+}

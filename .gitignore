@@ -5,6 +5,7 @@
 .upstreams/
 .bond-tools/
 .local-state/
+demo/profile.local.json
 secrets/
 transcripts/
 backups/

@@ -45,5 +45,9 @@ fi
 
 uv sync --frozen --extra dev
 if ! uv run bond-mcp doctor --json; then
-  echo "Dependencies are installed. Add provider variables, then rerun 'uv run bond-mcp doctor --json'." >&2
+  if grep -q '"endpoint": "https://' "$PROJECT_DIR/demo/profile.json" 2>/dev/null; then
+    echo "Demo relay profile detected. The MCP is ready for a no-credential jury run." >&2
+  else
+    echo "No demo relay profile is published. An operator must configure demo/profile.json or local provider variables." >&2
+  fi
 fi

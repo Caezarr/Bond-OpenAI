@@ -11,6 +11,7 @@ from starlette.websockets import WebSocket
 
 from .agent_config import build_agent_settings
 from .settings import Settings
+from .silence_monitor import SilenceMonitor
 from .telephony import Telephony
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,10 @@ class VoiceAgentSession:
         self._finish_task: asyncio.Task[None] | None = None
         self._playback_mark_ack = asyncio.Event()
         self._playback_mark_name: str | None = None
+        # Set once the mandatory synthetic-voice/no-recording disclosure has been
+        # fully spoken. Until then, barge-in is suppressed so noise cannot cut it.
+        self._disclosure_done = asyncio.Event()
+        self._silence: SilenceMonitor | None = None
 
     async def run(self) -> None:
         if not self.settings.deepgram_api_key:
@@ -84,6 +89,13 @@ class VoiceAgentSession:
             )
             await asyncio.wait_for(self._settings_applied.wait(), timeout=8)
             self._forward_twilio_audio.set()
+            self._silence = SilenceMonitor(
+                inject_message=self._inject_agent_message,
+                on_timeout=self._silence_hangup,
+                language=self.language,
+                reprompt_seconds=self.settings.silence_reprompt_seconds,
+                goodbye_seconds=self.settings.silence_goodbye_seconds,
+            )
             duration_task = asyncio.create_task(self._duration_guard())
 
             done, pending = await asyncio.wait(
@@ -102,6 +114,8 @@ class VoiceAgentSession:
                 except asyncio.CancelledError:
                     pass
         finally:
+            if self._silence is not None:
+                self._silence.stop()
             tasks = tuple(
                 task
                 for task in (listen_task, media_task, duration_task, self._finish_task)
@@ -120,6 +134,18 @@ class VoiceAgentSession:
 
     async def _duration_guard(self) -> None:
         await asyncio.sleep(self.settings.max_duration_seconds)
+        await self.telephony.hangup(self.provider_call_id)
+
+    async def _inject_agent_message(self, message: str) -> None:
+        from deepgram.agent.v1 import AgentV1InjectAgentMessage
+
+        await self._connection.send_inject_agent_message(
+            AgentV1InjectAgentMessage(message=message)
+        )
+
+    async def _silence_hangup(self) -> None:
+        if self._silence is not None:
+            self._silence.stop()
         await self.telephony.hangup(self.provider_call_id)
 
     async def _listen_twilio(self) -> None:
@@ -182,14 +208,26 @@ class VoiceAgentSession:
             elif isinstance(parsed, AgentV1UserStartedSpeaking):
                 self._agent_audio_done_is_current = False
                 self._agent_audio_done.clear()
-                await self.twilio_ws.send_json(
-                    {"event": "clear", "streamSid": self.stream_sid}
-                )
+                if self._silence is not None:
+                    self._silence.notify_user_started_speaking()
+                # Suppress barge-in until the mandatory disclosure finishes so a
+                # cough, echo or background noise cannot truncate the legal
+                # opening. After that, barge-in flushes queued agent audio.
+                if not (
+                    self.settings.protect_disclosure
+                    and not self._disclosure_done.is_set()
+                ):
+                    await self.twilio_ws.send_json(
+                        {"event": "clear", "streamSid": self.stream_sid}
+                    )
             elif isinstance(parsed, AgentV1FunctionCallRequest):
                 await self._handle_function_call(parsed)
             elif isinstance(parsed, AgentV1AgentAudioDone):
                 self._agent_audio_done_is_current = True
                 self._agent_audio_done.set()
+                self._disclosure_done.set()
+                if self._silence is not None:
+                    self._silence.notify_agent_audio_done()
             elif isinstance(parsed, AgentV1Error):
                 raise RuntimeError("Deepgram Voice Agent returned an error")
             elif isinstance(parsed, AgentV1Warning):
@@ -216,6 +254,8 @@ class VoiceAgentSession:
                 }
                 await self.on_outcome(content)
                 self._finish_requested.set()
+                if self._silence is not None:
+                    self._silence.stop()
                 should_finish = True
 
             response = AgentV1SendFunctionCallResponse(

@@ -35,8 +35,9 @@ uv run bond-mcp serve
 
 The first run installs pinned dependencies and local tools. The user never
 copies shell commands from an agent response and never puts a secret in a task.
-Credentials are read from an ignored local `.env` or a configured secret
-store.
+For the public demo, provider credentials stay in the operator relay and the
+user only needs the public `demo/profile.json` configuration. A local `.env`
+is required only when running the provider directly.
 
 ## MCP tools
 
@@ -51,6 +52,7 @@ The same contract works from Bond, Codex, an IDE agent, or any MCP client. The
 adapter is local and provider-neutral; Fredo is the default phone executor.
 
 See [docs/MCP.md](docs/MCP.md) for the two-click client setup.
+See [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md) for the no-credential jury flow.
 
 ## Safety by default
 
