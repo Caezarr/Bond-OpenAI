@@ -22,6 +22,10 @@ OutcomeCallback = Callable[[dict[str, object]], Awaitable[None]]
 FINISH_POST_FUNCTION_AUDIO_GRACE_SECONDS = 1.0
 FINISH_AUDIO_DONE_TIMEOUT_SECONDS = 8.0
 FINISH_MARK_TIMEOUT_SECONDS = 12.0
+# Upper bound on how long barge-in stays suppressed for the opening disclosure.
+# Normally the first AgentAudioDone releases it within a few seconds; this only
+# guards the error path so a long call can never get stuck unable to barge in.
+DISCLOSURE_PROTECT_MAX_SECONDS = 20.0
 
 
 class VoiceAgentSession:
@@ -63,6 +67,7 @@ class VoiceAgentSession:
         # Set once the mandatory synthetic-voice/no-recording disclosure has been
         # fully spoken. Until then, barge-in is suppressed so noise cannot cut it.
         self._disclosure_done = asyncio.Event()
+        self._disclosure_deadline = 0.0
         self._silence: SilenceMonitor | None = None
 
     async def run(self) -> None:
@@ -89,6 +94,9 @@ class VoiceAgentSession:
             )
             await asyncio.wait_for(self._settings_applied.wait(), timeout=8)
             self._forward_twilio_audio.set()
+            self._disclosure_deadline = (
+                asyncio.get_running_loop().time() + DISCLOSURE_PROTECT_MAX_SECONDS
+            )
             self._silence = SilenceMonitor(
                 inject_message=self._inject_agent_message,
                 on_timeout=self._silence_hangup,
@@ -212,11 +220,14 @@ class VoiceAgentSession:
                     self._silence.notify_user_started_speaking()
                 # Suppress barge-in until the mandatory disclosure finishes so a
                 # cough, echo or background noise cannot truncate the legal
-                # opening. After that, barge-in flushes queued agent audio.
-                if not (
+                # opening. Bounded by a deadline so the rest of a long call can
+                # always barge in even if the disclosure-done signal is missed.
+                protected = (
                     self.settings.protect_disclosure
                     and not self._disclosure_done.is_set()
-                ):
+                    and asyncio.get_running_loop().time() < self._disclosure_deadline
+                )
+                if not protected:
                     await self.twilio_ws.send_json(
                         {"event": "clear", "streamSid": self.stream_sid}
                     )
