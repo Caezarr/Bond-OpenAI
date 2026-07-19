@@ -14,8 +14,16 @@ machines only receive the public relay profile in `demo/profile.json`.
    `FREDO_DEMO_ACCESS_TOKEN`.
 3. Set `FREDO_ALLOWED_NUMBERS` to exact consenting E.164 destinations and
    `FREDO_PUBLIC_URL` to the service's public HTTPS URL.
-4. Copy `demo/profile.example.json` to `demo/profile.json`, put the relay URL
-   and the scoped demo access token in it, and commit only that public profile.
+4. From the repository root, publish the public profile with one command:
+
+   ```bash
+   uv run bond-mcp demo configure \
+     --endpoint https://your-relay.example.com \
+     --token 'your-scoped-public-demo-token'
+   ```
+
+   Commit only the resulting public profile. The command refuses to overwrite
+   an active profile unless `--force` is explicitly supplied.
 
 The demo access token is not a provider credential. It is intentionally
 scoped to the demo relay, and the relay still enforces allowlist, consent,
