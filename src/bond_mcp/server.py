@@ -63,7 +63,11 @@ class McpServer:
     async def _call_tool(self, request_id: Any, name: str | None, args: dict[str, Any]) -> dict[str, Any]:
         try:
             if name == "bond.classify_task":
-                value = classify(str(args.get("task_text", "")))
+                context = args.get("context")
+                value = classify(
+                    str(args.get("task_text", "")),
+                    context if isinstance(context, dict) else None,
+                )
                 return self._tool_result(request_id, {"classification": value})
             if name == "bond.create_phone_task":
                 payload = dict(args.get("task_input") or {})

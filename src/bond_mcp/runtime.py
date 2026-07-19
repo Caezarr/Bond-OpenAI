@@ -96,6 +96,7 @@ def create_runtime_app(settings, store: TaskStore) -> Starlette:
                 stream_sid=str(start_data.get("streamSid", "")),
                 provider_call_id=provider_call_id,
                 intent=task.call_goal,
+                language=task.language,
                 settings=settings,
                 telephony=telephony,
                 on_transcript=on_transcript,

@@ -25,7 +25,7 @@ ABSOLUTE RULES
 """
 
 
-def build_agent_settings(settings: Settings, intent: str):
+def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
     """Build the typed Deepgram settings used by the official reference SDK."""
     from deepgram.agent.v1 import (
         AgentV1Settings,
@@ -68,8 +68,14 @@ def build_agent_settings(settings: Settings, intent: str):
         },
     )
 
-    language = "fr" if intent.startswith("[language=fr]") else "en"
-    clean_intent = intent.removeprefix("[language=fr]").strip()
+    # New tasks carry language as a typed field. Keep the old prefix accepted
+    # for compatibility with a previously generated local request.
+    if language not in {"en", "fr"}:
+        language = "en"
+    if intent.startswith("[language=fr]"):
+        language = "fr"
+        intent = intent.removeprefix("[language=fr]")
+    clean_intent = intent.strip()
     if settings.listen_model.startswith("flux-"):
         listen_provider = AgentV1SettingsAgentListenProvider_V2(
             version="v2",

@@ -31,7 +31,8 @@ uv run bond-mcp install --client bond --print
 ```
 
 Paste the printed command entry into Bond's MCP integrations. No Bond API key
-or hosted callback is needed for the local connector.
+or hosted service is needed for the local connector. A live Twilio call still
+needs the public HTTPS callback URL documented in `docs/TELEPHONY.md`.
 
 ## Generic MCP clients
 

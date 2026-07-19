@@ -56,10 +56,10 @@ agent audio for barge-in.
 
 ## Authentication
 
-- `/v1/calls` requires a constant-time bearer comparison with
-  `FREDO_ENDPOINT_SECRET`.
-- Each request requires an 8–200 character `Idempotency-Key`; its server-side
-  fingerprint includes the task identity, destination and intent.
+- The local MCP process is launched over stdio by the client; no public API
+  endpoint is exposed for task creation.
+- Each task requires an idempotency key; the local SQLite store fingerprints the
+  task identity, destination and intent and replays exact retries safely.
 - Twilio status callbacks validate `X-Twilio-Signature` against the exact public
   HTTPS URL and form fields.
 - WebSocket handshakes validate the signature against the public HTTPS/WSS
@@ -89,9 +89,10 @@ errors are normalized rather than returning raw Twilio exceptions. Transcripts
 are held in local process memory for the current result and are not logged by
 the bridge.
 
-Known gap: registry/idempotency state is not durable. A process crash after
-Twilio accepted a call can leave an unknown outcome. The safe response is no
-automatic retry. A durable commit/reconciliation store is required next.
+The task correlation and idempotency state is durable in the local SQLite store.
+A process crash after Twilio accepts a call can still leave an unknown carrier
+outcome. The safe response remains no automatic retry; an operator should
+reconcile the carrier status before attempting any new task.
 
 ## Live qualification checklist
 

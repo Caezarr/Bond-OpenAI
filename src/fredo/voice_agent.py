@@ -33,6 +33,7 @@ class VoiceAgentSession:
         stream_sid: str,
         provider_call_id: str,
         intent: str,
+        language: str,
         settings: Settings,
         telephony: Telephony,
         on_transcript: TranscriptCallback,
@@ -42,6 +43,7 @@ class VoiceAgentSession:
         self.stream_sid = stream_sid
         self.provider_call_id = provider_call_id
         self.intent = intent
+        self.language = language
         self.settings = settings
         self.telephony = telephony
         self.on_transcript = on_transcript
@@ -78,7 +80,7 @@ class VoiceAgentSession:
             self._connection = await self._context_manager.__aenter__()
             listen_task = asyncio.create_task(self._listen_deepgram())
             await self._connection.send_settings(
-                build_agent_settings(self.settings, self.intent)
+                build_agent_settings(self.settings, self.intent, self.language)
             )
             await asyncio.wait_for(self._settings_applied.wait(), timeout=8)
             self._forward_twilio_audio.set()

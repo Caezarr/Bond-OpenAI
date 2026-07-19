@@ -26,7 +26,7 @@ and narrative layer for the software goal in `GOAL-BOND-MCP.md`.
 3. **Connection:** Bond identifies the task; Fredo executes it; the result
    closes the original task.
 4. **Proof:** verified caller, human confirmation, no recording, factual result.
-5. **Honesty:** current profile uses Twilio PSTN and hosted Deepgram voice.
+5. **Honesty:** current profile uses Twilio PSTN and provider-backed Deepgram voice.
 
 ## Visual direction — “the modern switchboard”
 
@@ -98,7 +98,7 @@ phone and a completed summary. Do not lead with a dashboard screenshot.
 2. `AI can write the message. The last mile is human.`
 3. One prompt with extracted fields.
 4. Bond task → Codex intent → Fredo call → completed task.
-5. Stack: Bond/Codex, Fredo, Twilio, Deepgram; label `hosted-voice-mvp`.
+5. Stack: Bond/Codex, Fredo, Twilio, Deepgram; label `provider-backed-voice`.
 6. Safety: consent, E.164, allowlist, verified caller, no recording.
 7. Before/after Bond task: `Needs you` → `Completed` with summary.
 8. Live demo: two clicks and the phone rings.
@@ -129,7 +129,7 @@ screenshots and deck exports.
 - A jury member understands the product in under 10 seconds.
 - The Bond/Codex/Fredo division is visible on the first slide and hero.
 - The live demo path is readable without technical narration.
-- The current hosted-voice boundary is stated accurately.
+- The current provider-backed voice boundary is stated accurately.
 - Website and deck share the same tokens, cable motif and task language.
 - Public assets contain no credential, full phone number, transcript or fake
   success evidence.

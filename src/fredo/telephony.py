@@ -17,6 +17,8 @@ class TelephonyError(RuntimeError):
 class Telephony(Protocol):
     async def place_call(self, request: CallRequest, call_id: str) -> str: ...
 
+    async def get_status(self, provider_call_id: str) -> str: ...
+
     async def hangup(self, provider_call_id: str) -> None: ...
 
 
@@ -93,6 +95,20 @@ class TwilioTelephony:
         except Exception as exc:
             raise TelephonyError("Carrier hangup failed") from exc
 
+    async def get_status(self, provider_call_id: str) -> str:
+        settings = self.settings
+
+        def _fetch() -> str:
+            from twilio.rest import Client
+
+            client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+            return str(client.calls(provider_call_id).fetch().status)
+
+        try:
+            return await asyncio.to_thread(_fetch)
+        except Exception as exc:
+            raise TelephonyError("Carrier status lookup failed") from exc
+
 
 class MockTelephony:
     """Deterministic test double. It is intentionally rejected by the jury CLI."""
@@ -103,6 +119,10 @@ class MockTelephony:
 
     async def hangup(self, provider_call_id: str) -> None:
         del provider_call_id
+
+    async def get_status(self, provider_call_id: str) -> str:
+        del provider_call_id
+        return "completed"
 
 
 def telephony_from_settings(settings: Settings) -> Telephony:

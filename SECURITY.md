@@ -15,6 +15,6 @@ policy is deny-by-default.
 - Secrets live only in an ignored local `.env` or a secret store.
 - Logs contain no credentials, raw audio, full transcripts or full phone numbers.
 
-The current runtime uses hosted speech processing. Do not claim that call audio
-never leaves the local machine until a separately qualified local voice profile
-exists.
+The current runtime uses provider-backed speech processing. Do not claim that
+call audio never leaves the local machine until a separately qualified local
+voice profile exists.
