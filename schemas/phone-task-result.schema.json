@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bond-OpenAI phone task result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_id", "call_id", "status", "recorded"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "call_id": {"type": "string", "format": "uuid"},
+    "status": {"enum": ["detected", "needs_input", "ready_for_review", "confirmed", "dialing", "in_progress", "completed", "no_answer", "declined", "failed", "cancelled"]},
+    "outcome": {"type": ["string", "null"]},
+    "summary": {"type": ["string", "null"]},
+    "recorded": {"const": false},
+    "error": {"type": ["string", "null"]}
+  }
+}

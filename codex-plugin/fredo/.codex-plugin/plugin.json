@@ -1,0 +1,24 @@
+{
+  "name": "fredo",
+  "version": "0.1.0",
+  "description": "Turn consented phone requests into guarded Fredo CLI runs with a Ginse handoff.",
+  "author": {
+    "name": "Fredo contributors"
+  },
+  "license": "Apache-2.0",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Fredo",
+    "shortDescription": "Guarded phone calls from Codex",
+    "longDescription": "Runs the Ginse preparation step and Fredo health checks, preserves native call confirmation, and labels unverified results honestly.",
+    "developerName": "Fredo contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Local execution"
+    ],
+    "defaultPrompt": [
+      "Call a consenting recipient with Fredo.",
+      "Appelle un destinataire consentant avec Fredo."
+    ]
+  }
+}

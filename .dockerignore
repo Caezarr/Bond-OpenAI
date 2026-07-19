@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+.env.*
+!.env.example
+.local-state
+.upstreams
+__pycache__
+*.pyc
+tests
+voice-clone-poc

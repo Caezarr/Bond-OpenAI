@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bond-OpenAI phone task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_id", "caller_identity", "destination_phone", "call_goal", "consent_confirmed"],
+  "properties": {
+    "task_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "caller_identity": {"type": "string", "minLength": 1, "maxLength": 120},
+    "destination_phone": {"type": "string", "pattern": "^\\+[1-9][0-9]{7,14}$"},
+    "call_goal": {"type": "string", "minLength": 1, "maxLength": 500},
+    "consent_confirmed": {"const": true},
+    "language": {"enum": ["en", "fr"]},
+    "timezone": {"type": "string", "minLength": 1, "maxLength": 64},
+    "confirmed": {"type": "boolean"}
+  }
+}
