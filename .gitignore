@@ -2,9 +2,8 @@
 .env
 .env.*
 !.env.example
-!.env.ginse.example
 .upstreams/
-.fredo-tools/
+.bond-tools/
 .local-state/
 secrets/
 transcripts/

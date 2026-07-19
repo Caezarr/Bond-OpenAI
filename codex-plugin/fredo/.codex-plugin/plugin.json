@@ -1,7 +1,7 @@
 {
   "name": "fredo",
   "version": "0.1.0",
-  "description": "Turn consented phone requests into guarded Fredo CLI runs with a Ginse handoff.",
+  "description": "Turn consented phone requests into guarded local Bond-OpenAI MCP calls.",
   "author": {
     "name": "Fredo contributors"
   },
@@ -10,7 +10,7 @@
   "interface": {
     "displayName": "Fredo",
     "shortDescription": "Guarded phone calls from Codex",
-    "longDescription": "Runs the Ginse preparation step and Fredo health checks, preserves native call confirmation, and labels unverified results honestly.",
+    "longDescription": "Connects Codex to the local Bond-OpenAI MCP, preserves native call confirmation, and labels unverified results honestly.",
     "developerName": "Fredo contributors",
     "category": "Productivity",
     "capabilities": [

@@ -12,6 +12,9 @@ from .models import PhoneTask
 
 class PhoneProvider(Protocol):
     async def create_call(self, task: PhoneTask, call_id: str) -> str: ...
+
+    async def get_status(self, provider_call_id: str) -> str: ...
+
     async def cancel_call(self, provider_call_id: str) -> None: ...
 
 
@@ -29,6 +32,9 @@ class FredoProvider:
         # its own provider-neutral task contract at this boundary.
         request = SimpleNamespace(to=task.destination_phone, intent=task.call_goal)
         return await self.telephony.place_call(request, call_id)
+
+    async def get_status(self, provider_call_id: str) -> str:
+        return await self.telephony.get_status(provider_call_id)
 
     async def cancel_call(self, provider_call_id: str) -> None:
         await self.telephony.hangup(provider_call_id)

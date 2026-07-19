@@ -39,7 +39,7 @@ Fredo executes it, and Bond marks it complete with the outcome.
 
 ## 4. Be honest about the current MVP
 
-The active profile is `hosted-voice-mvp`, not all-local inference:
+The active profile is `provider-backed-voice`, not all-local inference:
 
 ```text
 Codex prompt
@@ -215,7 +215,7 @@ Twilio PSTN
 Deepgram voice agent
 ```
 
-Label the current release clearly: `hosted-voice-mvp`.
+Label the current release clearly: `provider-backed-voice`.
 
 ### Slide 6 — The guardrails
 

@@ -20,6 +20,12 @@ class Policy:
     allowed_numbers: frozenset[str]
     max_duration_seconds: int = 180
 
+    def __post_init__(self) -> None:
+        # Normalize the operator-supplied allowlist once at the policy boundary.
+        # Invalid entries fail closed instead of becoming unreachable targets.
+        normalized = frozenset(normalize_phone(value) for value in self.allowed_numbers)
+        object.__setattr__(self, "allowed_numbers", normalized)
+
 
 def normalize_phone(value: Any) -> str:
     if not isinstance(value, str):
@@ -61,7 +67,17 @@ def build_task(payload: Any, policy: Policy) -> PhoneTask:
     )
 
 
-def classify(text: str) -> str:
+def classify(text: str, context: dict[str, Any] | None = None) -> str:
+    """Classify a request without making a carrier call."""
+    text = text.strip()
     lowered = text.lower()
-    phone_words = ("call", "phone", "ring", "appelle", "téléphone", "réserve", "reservation")
-    return "phone_call" if any(word in lowered for word in phone_words) else "not_phone_call"
+    phone_words = (
+        "call", "phone", "ring", "telephone", "appelle", "appeler",
+        "téléphone", "réserve", "reservation", "réservation",
+    )
+    if not any(word in lowered for word in phone_words):
+        return "not_phone_call"
+    context = context or {}
+    combined = f"{text} {context.get('destination_phone', '')}"
+    has_destination = bool(re.search(r"\+[1-9][0-9\s().-]{7,18}", combined))
+    return "phone_call" if has_destination else "needs_input"
