@@ -67,7 +67,10 @@ class McpServer:
                 return self._tool_result(request_id, {"classification": value})
             if name == "bond.create_phone_task":
                 payload = dict(args.get("task_input") or {})
-                payload["idempotency_key"] = args.get("idempotency_key", "")
+                idempotency_key = str(args.get("idempotency_key", "")).strip()
+                if not idempotency_key:
+                    raise PolicyError("idempotency_required", "idempotency_key is required")
+                payload["idempotency_key"] = idempotency_key
                 task = build_task(payload, self.policy)
                 if not task.confirmed:
                     return self._tool_result(request_id, {"status": "needs_confirmation", "preview": {"destination_phone": task.destination_phone, "caller_identity": task.caller_identity, "call_goal": task.call_goal, "recorded": False, "max_duration_seconds": self.policy.max_duration_seconds}})

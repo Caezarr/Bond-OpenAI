@@ -38,7 +38,7 @@ def create_runtime_app(settings, store: TaskStore) -> Starlette:
         signature = request.headers.get("x-twilio-signature", "")
         local_auth = settings.endpoint_secret and supplied == f"Bearer {settings.endpoint_secret}"
         twilio_auth = _valid_twilio_http(settings, request, form, signature)
-        if settings.endpoint_secret and not (local_auth or twilio_auth):
+        if not (local_auth or twilio_auth):
             return JSONResponse({"error": "unauthorized"}, status_code=401)
         call_status = str(form.get("CallStatus", ""))
         mapped = {
