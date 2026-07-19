@@ -20,5 +20,4 @@ jobs:
       - run: uv run ruff check src tests
       - run: uv run pytest
       - run: uv build
-      - run: docker compose config --quiet
-      - run: docker build --tag fredo:test .
+      - run: git diff --check
