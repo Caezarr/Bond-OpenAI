@@ -52,7 +52,9 @@ class DemoProvider:
 
     endpoint: str
     access_token: str | None = None
-    timeout_seconds: float = 15.0
+    # Render Free can take a short time to wake after inactivity. Keep the
+    # request window generous enough for a first-prompt demo cold start.
+    timeout_seconds: float = 90.0
     transport: httpx.AsyncBaseTransport | None = field(default=None, repr=False)
 
     def _headers(self) -> dict[str, str]:
@@ -70,6 +72,17 @@ class DemoProvider:
                     headers=self._headers(),
                     json=body,
                 )
+                # A sleeping Render Free service can return an edge-level 404
+                # before its process is ready. Wake it through healthz and
+                # retry the idempotent request once; the relay's task store
+                # prevents duplicate dialing if the first request was accepted.
+                if response.status_code == 404:
+                    await client.get(f"{self.endpoint.rstrip('/')}/healthz")
+                    response = await client.post(
+                        f"{self.endpoint.rstrip('/')}/v1/calls",
+                        headers=self._headers(),
+                        json=body,
+                    )
                 response.raise_for_status()
                 payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
