@@ -11,9 +11,10 @@ machines only receive the public relay profile in `demo/profile.json`.
 2. Set the relay-only secrets in the hosting dashboard:
    `DEEPGRAM_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
    `TWILIO_PHONE_NUMBER` and `FREDO_ENDPOINT_SECRET`.
-3. Set `FREDO_ALLOWED_NUMBERS` to exact consenting E.164 destinations and
-   `FREDO_PUBLIC_URL` to the service's public HTTPS URL. For today's public
-   demo, set `FREDO_DEMO_PUBLIC=1`.
+3. Set `FREDO_PUBLIC_URL` to the service's public HTTPS URL. For today's
+   public demo, set `FREDO_DEMO_PUBLIC=1` and
+   `FREDO_ALLOW_UNLISTED_DESTINATIONS=1`. This removes the static number list
+   but keeps E.164, forbidden-number, explicit-consent and confirmation gates.
 4. From the repository root, publish the public profile with one command:
 
    ```bash
@@ -25,8 +26,9 @@ machines only receive the public relay profile in `demo/profile.json`.
    Commit only the resulting public profile. The command refuses to overwrite
    an active profile unless `--force` is explicitly supplied.
 
-The public mode still enforces allowlist, consent, preview, one active call,
-180-second duration and rate limits. Disable it after the demo. A private
+The public mode still enforces E.164 validation, forbidden-number blocking,
+consent, preview, one active call, 180-second duration and rate limits. Disable
+it after the demo. A private
 token-authenticated relay remains available when public mode is off. Never
 place Twilio or Deepgram credentials in `profile.json`.
 

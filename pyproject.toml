@@ -28,6 +28,11 @@ dev = [
   "jsonschema>=4.25,<5",
   "ruff>=0.12,<1",
 ]
+# Live listen-only audio (browser-playable MP3). Optional: without it, calls run
+# normally and the widget "Listen" button stays hidden.
+audio = [
+  "lameenc==1.8.4",
+]
 
 [project.scripts]
 bond-mcp = "bond_mcp.cli:main"

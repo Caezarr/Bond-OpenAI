@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 from starlette.testclient import TestClient
@@ -11,11 +12,27 @@ from bond_mcp.cli import main
 from bond_mcp.demo_relay import DemoRelay
 from bond_mcp.policy import Policy, PolicyError, build_task, classify
 from bond_mcp.providers import DemoProvider
+from bond_mcp.runtime import _valid_twilio_signature
 from bond_mcp.server import McpServer
 from bond_mcp.store import IdempotencyConflict, TaskStore
 from fredo.agent_config import build_agent_settings
 from fredo.settings import Settings
 from fredo.silence_monitor import SilenceMonitor
+
+
+def test_twilio_websocket_signature_uses_exact_wss_url() -> None:
+    from twilio.request_validator import RequestValidator
+
+    token = "twilio-auth-token"
+    signed_url = "wss://voice.example.test/fredo/twilio/media?region=ie1"
+    signature = RequestValidator(token).compute_signature(signed_url, {})
+    websocket = SimpleNamespace(url="wss://internal:8080/twilio/media?region=ie1")
+    settings = Settings(
+        twilio_auth_token=token,
+        public_url="https://voice.example.test/fredo",
+    )
+
+    assert _valid_twilio_signature(settings, websocket, signature) is True
 
 
 def test_classifies_phone_tasks_without_dialing() -> None:
@@ -74,14 +91,16 @@ def test_fallback_summary_is_clear_and_transcript_free() -> None:
     from bond_mcp.summary import fallback_summary
 
     silent = fallback_summary(language="en", disclosure_delivered=True, user_turns=0)
-    assert "not confirmed" in silent.lower()
+    assert "connected" in silent.lower()
+    assert "no audible response" in silent.lower()
 
     spoke_en = fallback_summary(language="en", disclosure_delivered=True, user_turns=3)
     assert "disclosure" in spoke_en.lower()
     assert "3 turn" in spoke_en
 
     spoke_fr = fallback_summary(language="fr", disclosure_delivered=False, user_turns=2)
-    assert "objectif" in spoke_fr.lower()
+    assert "parole" in spoke_fr.lower()
+    assert "2 prise" in spoke_fr
 
 
 def test_phone_result_carries_answer_and_works(tmp_path: Path) -> None:
@@ -605,6 +624,289 @@ def test_open_phone_audio_stream_unavailable(tmp_path: Path) -> None:
     assert "audio_stream" not in json.dumps(audio)
 
 
+def test_mulaw_decode_and_mix() -> None:
+    from fredo.audio import _mix, mulaw_to_pcm16
+
+    pcm = mulaw_to_pcm16(bytes([0x00]))
+    assert pcm[0] < -30000  # 0x00 decodes to a large negative magnitude
+    mixed = _mix(mulaw_to_pcm16(bytes([0x00])), mulaw_to_pcm16(bytes([0x00])))
+    assert mixed[0] == -32768  # summed and hard-clipped
+
+
+def test_audio_tokens_single_use_and_expiry() -> None:
+    from fredo.audio import AudioTokenManager
+
+    manager = AudioTokenManager(ttl_seconds=60)
+    token, _ = manager.mint("c1")
+    assert manager.consume(token) == "c1"
+    assert manager.consume(token) is None  # single use
+
+    expired = AudioTokenManager(ttl_seconds=-1)
+    stale, _ = expired.mint("c2")
+    assert expired.consume(stale) is None
+
+
+def test_audio_tokens_prune_expired_entries() -> None:
+    from fredo.audio import AudioTokenManager
+
+    manager = AudioTokenManager(ttl_seconds=-1)
+    manager.mint("expired")
+    manager._ttl = 60
+    manager.mint("live")
+    assert len(manager._tokens) == 1
+
+
+def test_audio_hub_mixes_and_streams() -> None:
+    from fredo.audio import FRAME_BYTES, AudioHub
+
+    async def scenario() -> bytes:
+        hub = AudioHub()
+        hub.publish("c1", "caller", bytes([0x00]) * 160)
+        hub.publish("c1", "agent", bytes([0x00]) * 160)
+        stream = hub.listen("c1")
+        try:
+            return await asyncio.wait_for(stream.__anext__(), timeout=1.0)
+        finally:
+            hub.close("c1")
+
+    frame = asyncio.run(scenario())
+    assert len(frame) == FRAME_BYTES
+
+
+def test_audio_hub_absent_call_ends_stream() -> None:
+    from fredo.audio import AudioHub
+
+    async def scenario() -> list[bytes]:
+        return [frame async for frame in AudioHub().listen("missing")]
+
+    assert asyncio.run(scenario()) == []
+
+
+def test_runtime_readiness_endpoint(tmp_path: Path, monkeypatch) -> None:
+    import bond_mcp.runtime as runtime_mod
+    from bond_mcp.runtime import create_runtime_app
+
+    ready_settings = Settings(telephony_provider="mock")
+    app = create_runtime_app(ready_settings, TaskStore(tmp_path / "ready.sqlite3"))
+    client = TestClient(app)
+    assert client.get("/healthz").status_code == 200
+    response = client.get("/readyz")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+
+    monkeypatch.setattr(runtime_mod, "audio_encoding_available", lambda: False)
+    not_ready = create_runtime_app(
+        Settings(telephony_provider="mock", audio_stream_origin="https://audio.example.com"),
+        TaskStore(tmp_path / "audio.sqlite3"),
+    )
+    response = TestClient(not_ready).get("/readyz")
+    assert response.status_code == 503
+    assert response.json()["audio"]["encoder_available"] is False
+
+
+def test_doctor_flags_enabled_audio_without_encoder(monkeypatch) -> None:
+    import bond_mcp.cli as cli_mod
+
+    monkeypatch.setattr(cli_mod, "audio_encoding_available", lambda: False)
+    summary = cli_mod._doctor_summary(
+        Settings(telephony_provider="mock", audio_stream_origin="https://audio.example.com")
+    )
+    assert summary["audio_ready"] is False
+    assert "lameenc (run: uv sync --frozen --extra audio)" in summary["missing"]
+
+
+def test_doctor_demo_client_does_not_require_relay_encoder(monkeypatch) -> None:
+    import bond_mcp.cli as cli_mod
+
+    monkeypatch.setattr(cli_mod, "audio_encoding_available", lambda: False)
+    summary = cli_mod._doctor_summary(
+        Settings(
+            telephony_provider="demo",
+            demo_endpoint="https://relay.example.com",
+            demo_access_token="demo-token",
+            audio_stream_origin="https://relay.example.com",
+        )
+    )
+    assert summary["audio_encoder_required"] is False
+    assert summary["audio_ready"] is True
+    assert not summary["missing"]
+
+
+def test_settings_reject_non_https_audio_origin() -> None:
+    try:
+        Settings.from_env(
+            {
+                "FREDO_MAX_CONCURRENT_CALLS": "1",
+                "FREDO_AUDIO_STREAM_ORIGIN": "http://audio.example.com",
+            }
+        )
+    except ValueError as exc:
+        assert "FREDO_AUDIO_STREAM_ORIGIN" in str(exc)
+    else:
+        raise AssertionError("audio origin must require HTTPS")
+
+
+def test_open_phone_audio_stream_ready(tmp_path: Path, monkeypatch) -> None:
+    import bond_mcp.server as server_mod
+    from bond_mcp.models import TaskState
+    from fredo.audio import get_audio_hub
+
+    settings = Settings(
+        allow_unlisted_destinations=True,
+        autoconfirm=True,
+        telephony_provider="mock",
+        audio_stream_origin="https://relay.example.com",
+    )
+    server = McpServer(settings, store_path=tmp_path / "t.sqlite3")
+
+    class FakeProvider:
+        async def create_call(self, task, call_id):
+            del task
+            return f"prov-{call_id}"
+
+        async def get_status(self, provider_call_id):
+            del provider_call_id
+            return "in-progress"
+
+        async def cancel_call(self, provider_call_id):
+            del provider_call_id
+
+    server.provider = FakeProvider()
+    created = asyncio.run(
+        server.handle(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "bond.create_phone_task",
+                    "arguments": {
+                        "idempotency_key": "audio-ready",
+                        "task_input": {
+                            "task_id": "t1",
+                            "caller_identity": "Gab",
+                            "destination_phone": "+33612345678",
+                            "call_goal": "Reserve a table",
+                        },
+                    },
+                },
+            }
+        )
+    )
+    call_id = created["result"]["structuredContent"]["call_id"]
+    result = server.store.get(call_id)
+    result.status = TaskState.IN_PROGRESS
+    server.store.update(result)
+    get_audio_hub().publish(call_id, "caller", bytes([0x00]) * 160)
+    monkeypatch.setattr(server_mod, "audio_encoding_available", lambda: True)
+
+    audio = asyncio.run(
+        server.handle(
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {"name": "bond.open_phone_audio_stream", "arguments": {"call_id": call_id}},
+            }
+        )
+    )
+    get_audio_hub().close(call_id)
+    stream = audio["result"]["_meta"]["audio_stream"]
+    assert audio["result"]["structuredContent"]["status"] == "ready"
+    assert stream["url"].startswith("https://relay.example.com/live/")
+    assert stream["mime_type"] == "audio/mpeg"
+
+
+def test_demo_audio_stream_uses_relay_without_local_audio_origin(tmp_path: Path) -> None:
+    from bond_mcp.models import TaskState
+
+    settings = Settings(
+        allow_unlisted_destinations=True,
+        autoconfirm=True,
+        telephony_provider="demo",
+        demo_endpoint="https://relay.example.com",
+    )
+    server = McpServer(settings, store_path=tmp_path / "demo-audio.sqlite3")
+
+    class RelayProvider:
+        async def create_call(self, task, call_id):
+            del task, call_id
+            return "remote-1"
+
+        async def get_result(self, provider_call_id):
+            del provider_call_id
+            return {"status": "in_progress"}
+
+        async def cancel_call(self, provider_call_id):
+            del provider_call_id
+
+        async def open_audio_stream(self, provider_call_id):
+            assert provider_call_id == "remote-1"
+            return {
+                "status": "ready",
+                "url": "https://relay.example.com/live/token",
+                "mime_type": "audio/mpeg",
+            }
+
+    server.provider = RelayProvider()
+    created = asyncio.run(
+        server.handle(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "bond.create_phone_task",
+                    "arguments": {
+                        "idempotency_key": "demo-audio",
+                        "task_input": {
+                            "task_id": "demo-audio",
+                            "caller_identity": "Gab",
+                            "destination_phone": "+33612345678",
+                            "call_goal": "Test audio",
+                        },
+                    },
+                },
+            }
+        )
+    )
+    call_id = created["result"]["structuredContent"]["call_id"]
+    result = server.store.get(call_id)
+    result.status = TaskState.IN_PROGRESS
+    server.store.update(result)
+
+    status = asyncio.run(
+        server.handle(
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {
+                    "name": "bond.get_phone_task_status",
+                    "arguments": {"call_id": call_id},
+                },
+            }
+        )
+    )
+    assert status["result"]["structuredContent"]["display"]["live_listen_available"] is True
+
+    audio = asyncio.run(
+        server.handle(
+            {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "bond.open_phone_audio_stream",
+                    "arguments": {"call_id": call_id},
+                },
+            }
+        )
+    )
+    assert audio["result"]["structuredContent"]["status"] == "ready"
+    assert audio["result"]["_meta"]["audio_stream"]["url"].endswith("/live/token")
+
+
 def test_settings_render_port_and_host() -> None:
     settings = Settings.from_env({"PORT": "10000"})
     assert settings.port == 10000
@@ -759,6 +1061,42 @@ def test_demo_relay_public_mode_is_allowlist_only(tmp_path: Path) -> None:
             "consent_confirmed": True,
             "confirmed": True,
             "idempotency_key": "public-relay-key",
+        }
+    }
+    with TestClient(relay.app()) as client:
+        created = client.post("/v1/calls", json=body)
+        assert created.status_code == 200
+
+
+def test_demo_relay_public_dynamic_consent_can_skip_static_list(tmp_path: Path) -> None:
+    class FakeProvider:
+        async def create_call(self, task, call_id):
+            del task
+            return f"remote-{call_id}"
+
+        async def get_status(self, provider_call_id):
+            del provider_call_id
+            return "completed"
+
+        async def cancel_call(self, provider_call_id):
+            del provider_call_id
+
+    settings = Settings(
+        telephony_provider="mock",
+        demo_public=True,
+        allow_unlisted_destinations=True,
+        state_dir=tmp_path,
+    )
+    relay = DemoRelay(settings, TaskStore(tmp_path / "relay.sqlite3"), FakeProvider())
+    body = {
+        "task": {
+            "task_id": "dynamic-consent-task",
+            "caller_identity": "Gab",
+            "destination_phone": "+31636409680",
+            "call_goal": "Ask whether the recipient can speak about Bond",
+            "consent_confirmed": True,
+            "confirmed": True,
+            "idempotency_key": "dynamic-consent-key",
         }
     }
     with TestClient(relay.app()) as client:

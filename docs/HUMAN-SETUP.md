@@ -37,28 +37,42 @@ client cannot render apps, everything still works as plain text.
 ### Live listening (optional, operator-enabled)
 
 The `Listen` button is **listen-only** and appears only while a call is
-`in_progress` **and** an audio relay is configured. To enable it, set
-`FREDO_AUDIO_STREAM_ORIGIN` to the single HTTPS origin that serves the mixed,
-non-recorded live stream. Left empty, the button stays hidden and calls run
-normally. The audio stream reaches only the widget through short-lived,
-one-time metadata; it is never logged, persisted, or shown to the model.
+`in_progress` **and** live audio is enabled. It is off by default. To enable it
+on the machine that runs the call (local `real` mode) or on the relay (demo
+mode):
+
+1. Install the optional audio encoder: `uv sync --frozen --extra audio`
+   (on Render, change the build command to include `--extra audio`).
+2. Set `FREDO_AUDIO_STREAM_ORIGIN` to the single public HTTPS origin that serves
+   `/live` (your `FREDO_PUBLIC_URL` in local mode, or the relay URL in demo mode).
+
+Left empty, the button stays hidden and calls run normally. How it stays safe:
+both call legs are mixed **in memory only**, exposed as a browser-playable MP3 at
+`/live/{token}`. The token is single-use, short-lived and bound to the call; the
+URL is delivered to the widget through short-lived `_meta` only and is never
+logged, persisted, copied into model-visible content, or recorded to disk.
 
 ## Operator setup (one time)
 
 The operator owns the provider account and the relay. Provider secrets never
 go in Git, `demo/profile.json`, prompts, screenshots, or jury machines.
 
-1. Deploy `render.demo.yaml` to a private operator-controlled Render service,
-   or run `uv run bond-mcp relay` on a machine reachable through HTTPS.
+1. Deploy `render.demo.yaml` for the public allowlist-only demo, or
+   `render.yaml` for the token-authenticated relay. Both run on an
+   operator-controlled Render service. Alternatively run
+   `uv run bond-mcp relay` on a machine reachable through HTTPS.
 2. Set the relay variables in the host's secret environment:
    `DEEPGRAM_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
    `TWILIO_PHONE_NUMBER`, `FREDO_ENDPOINT_SECRET`,
-   `FREDO_ALLOWED_NUMBERS`, and `FREDO_PUBLIC_URL`.
-   For today's public demo, also set `FREDO_DEMO_PUBLIC=1`. No relay token is
-   placed in GitHub or on jury machines.
+   `FREDO_PUBLIC_URL`. For today's public demo, also set
+   `FREDO_DEMO_PUBLIC=1` and `FREDO_ALLOW_UNLISTED_DESTINATIONS=1`. The
+   interface still requires the requester to confirm recipient consent before
+   dialing. No relay token is placed in GitHub or on jury machines.
 3. Keep `FREDO_TELEPHONY_PROVIDER=real`, `FREDO_MAX_CONCURRENT_CALLS=1`,
    and the 180-second default for the demo.
-4. Verify `GET /healthz` and `uv run bond-mcp doctor --json` before publishing.
+4. Verify `GET /healthz`, `GET /readyz`, and `uv run bond-mcp doctor --json`
+   before publishing. `/healthz` only proves the process is up; `/readyz`
+   rejects missing carrier credentials or an enabled-but-unavailable audio encoder.
 5. Publish only the relay URL:
 
    ```bash

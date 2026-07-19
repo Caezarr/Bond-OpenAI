@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from fredo.audio import audio_encoding_available
 from fredo.settings import Settings
 
 from .server import McpServer, run_stdio
@@ -39,6 +40,34 @@ def _parser() -> argparse.ArgumentParser:
 
 def _config() -> dict[str, object]:
     return {"command": "uv", "args": ["run", "bond-mcp", "serve"], "cwd": str(Path.cwd())}
+
+
+def _doctor_summary(settings: Settings) -> dict[str, object]:
+    """Return safe deployment diagnostics without exposing configuration values."""
+    summary = settings.public_summary()
+    audio_enabled = bool(
+        settings.audio_stream_origin
+        or (settings.telephony_provider == "demo" and settings.demo_endpoint)
+    )
+    encoder_available = audio_encoding_available()
+    # In demo mode, the remote relay owns the hub and MP3 encoder. The local
+    # stdio MCP only requests a short-lived stream descriptor, so it does not
+    # need lameenc installed.
+    encoder_required = audio_enabled and settings.telephony_provider != "demo"
+    missing = settings.missing_for_real_call()
+    if encoder_required and not encoder_available:
+        missing.append("lameenc (run: uv sync --frozen --extra audio)")
+    summary.update(
+        {
+            "mcp": "ready",
+            "audio_stream_configured": audio_enabled,
+            "audio_encoder_available": encoder_available,
+            "audio_encoder_required": encoder_required,
+            "audio_ready": not encoder_required or encoder_available,
+            "missing": missing,
+        }
+    )
+    return summary
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -107,9 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         print(rendered, end="")
         return 0
     settings = Settings.from_env()
-    summary = settings.public_summary()
-    summary["mcp"] = "ready"
-    summary["missing"] = settings.missing_for_real_call()
+    summary = _doctor_summary(settings)
     print(json.dumps(summary, indent=2) if args.json else "bond-mcp: " + ("ready" if not summary["missing"] else "configuration incomplete"))
     return 0 if not summary["missing"] else 1
 

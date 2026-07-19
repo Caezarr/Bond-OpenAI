@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Mapping
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -169,6 +170,19 @@ class Settings:
         silence_goodbye = _integer(env, "FREDO_SILENCE_GOODBYE_SECONDS", 10)
         if not 5 <= silence_goodbye <= 60:
             raise ValueError("FREDO_SILENCE_GOODBYE_SECONDS must be between 5 and 60")
+        audio_stream_origin = (env.get("FREDO_AUDIO_STREAM_ORIGIN") or "").rstrip("/") or None
+        if audio_stream_origin:
+            parsed_audio_origin = urlsplit(audio_stream_origin)
+            if (
+                parsed_audio_origin.scheme != "https"
+                or not parsed_audio_origin.netloc
+                or parsed_audio_origin.path
+                or parsed_audio_origin.query
+                or parsed_audio_origin.fragment
+            ):
+                raise ValueError(
+                    "FREDO_AUDIO_STREAM_ORIGIN must be a single HTTPS origin without a path"
+                )
 
         return cls(
             deepgram_api_key=env.get("DEEPGRAM_API_KEY") or None,
@@ -205,8 +219,7 @@ class Settings:
             in {"1", "true", "yes"},
             autoconfirm=env.get("FREDO_AUTOCONFIRM", "0").strip().lower()
             in {"1", "true", "yes"},
-            audio_stream_origin=(env.get("FREDO_AUDIO_STREAM_ORIGIN") or "").rstrip("/")
-            or None,
+            audio_stream_origin=audio_stream_origin,
             telephony_provider=provider,
             demo_endpoint=demo_endpoint,
             demo_access_token=demo_access_token,

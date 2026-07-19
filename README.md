@@ -45,14 +45,20 @@ is required only when running the provider directly.
 bond.classify_task(task_text, context)
 bond.create_phone_task(task_input, idempotency_key)
 bond.get_phone_task_status(call_id)
+bond.get_task_actions(call_id)
+bond.open_phone_audio_stream(call_id)  # app-only, user-initiated
 bond.cancel_phone_task(call_id)
 ```
 
 The same contract works from Bond, Codex, an IDE agent, or any MCP client. The
 adapter is local and provider-neutral; Fredo is the default phone executor.
+In Codex, creating a confirmed call renders a live phone card. Its optional
+listen-only stream is disabled until the operator configures the audio relay;
+it never records audio or requests microphone access.
 
 See [docs/MCP.md](docs/MCP.md) for the two-click client setup.
 See [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md) for the no-credential jury flow.
+See [docs/HUMAN-SETUP.md](docs/HUMAN-SETUP.md) for the operator and live-demo checklist.
 
 ## Safety by default
 

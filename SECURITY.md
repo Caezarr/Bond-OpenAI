@@ -7,7 +7,10 @@ policy is deny-by-default.
 - Destinations must be canonical E.164 and allowlisted.
 - Caller ID comes only from the configured verified carrier number.
 - The local preview is mandatory; closing it means no dial.
-- One active call and a hard 180-second limit are enforced.
+- One active call is enforced. Call duration defaults to a hard 180-second cap.
+  Exceeding it is possible only with the explicit `FREDO_ALLOW_EXTENDED_CALLS=1`
+  opt-in and remains hard-capped at 3600 seconds; longer calls increase cost and
+  exposure and are an operator decision, not the default posture.
 - Recording is disabled.
 - The voice agent cannot change the destination, invoke tools or read secrets.
 - Call creation is idempotent and uncertain outcomes are never blindly retried.

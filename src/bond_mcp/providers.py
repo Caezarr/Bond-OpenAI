@@ -93,6 +93,14 @@ class DemoProvider:
         return provider_call_id
 
     async def get_status(self, provider_call_id: str) -> str:
+        payload = await self.get_result(provider_call_id)
+        status = payload.get("status")
+        if not isinstance(status, str):
+            raise RuntimeError("Demo relay returned an invalid status")
+        return status
+
+    async def get_result(self, provider_call_id: str) -> dict:
+        """Fetch the full relay result so display fields survive the demo hop."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self.transport) as client:
                 response = await client.get(
@@ -103,10 +111,9 @@ class DemoProvider:
                 payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
             raise RuntimeError("Demo relay status is unavailable") from exc
-        status = payload.get("status")
-        if not isinstance(status, str):
-            raise RuntimeError("Demo relay returned an invalid status")
-        return status
+        if not isinstance(payload, dict):
+            raise RuntimeError("Demo relay returned an invalid result")
+        return payload
 
     async def cancel_call(self, provider_call_id: str) -> None:
         try:
@@ -118,6 +125,20 @@ class DemoProvider:
                 response.raise_for_status()
         except httpx.HTTPError as exc:
             raise RuntimeError("Demo relay cancellation failed") from exc
+
+    async def open_audio_stream(self, provider_call_id: str) -> dict:
+        """Ask the relay to mint a one-time listen-only stream descriptor."""
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self.transport) as client:
+                response = await client.post(
+                    f"{self.endpoint.rstrip('/')}/v1/calls/{provider_call_id}/listen",
+                    headers=self._headers(),
+                )
+                response.raise_for_status()
+                payload = response.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            raise RuntimeError("Demo relay live audio is unavailable") from exc
+        return payload if isinstance(payload, dict) else {"status": "unavailable"}
 
 
 def provider_from_settings(settings: Settings) -> PhoneProvider:

@@ -41,6 +41,8 @@ class PhoneTask:
     timezone: str = "Europe/Brussels"
     idempotency_key: str = ""
     confirmed: bool = False
+    destination_source: dict[str, str] | None = None
+    recipient_label: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -53,6 +55,11 @@ class PhoneResult:
     status: TaskState
     outcome: str | None = None
     summary: str | None = None
+    answer: str | None = None
+    works: bool | None = None
+    details: dict[str, Any] | None = None
+    connected_at: str | None = None
+    ended_at: str | None = None
     provider_call_id: str | None = None
     recorded: bool = False
     error: str | None = None

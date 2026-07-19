@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Fredo phone call</title>
+  <style>
+    :root {
+      --ink: #151817;
+      --paper: #f5f0e6;
+      --signal: #ff654a;
+      --cobalt: #4267e8;
+      --relay: #bee8cf;
+      --wire: #a7a79d;
+      --surface: #f5f0e6;
+      --surface-raised: #fffaf0;
+      --text: #151817;
+      --text-soft: #5f625e;
+      --line: #c8c5bb;
+      --focus: #4267e8;
+      --danger: #c74640;
+      --shadow: rgba(21, 24, 23, 0.16);
+      color-scheme: light;
+      font-family: "Instrument Sans", Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    :root[data-theme="dark"] {
+      --surface: #151817;
+      --surface-raised: #1d211f;
+      --text: #f5f0e6;
+      --text-soft: #b8bbb4;
+      --line: #3b403d;
+      --focus: #7f9aff;
+      --shadow: rgba(0, 0, 0, 0.34);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+
+    [hidden] { display: none !important; }
+
+    html, body {
+      margin: 0;
+      min-width: 0;
+      background: transparent;
+      color: var(--text);
+    }
+
+    body { padding: 8px; }
+
+    button { font: inherit; }
+
+    button:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 72%, transparent);
+      outline-offset: 3px;
+    }
+
+    .shell {
+      width: min(100%, 680px);
+      margin: 0 auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: 0 18px 54px var(--shadow);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand,
+    .status,
+    .privacy,
+    .actions,
+    .meta-row,
+    .result-heading {
+      display: flex;
+      align-items: center;
+    }
+
+    .brand { gap: 10px; }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--signal);
+      background: var(--surface-raised);
+    }
+
+    .brand-name {
+      margin: 0;
+      font-family: "Bricolage Grotesque", "Arial Narrow", ui-sans-serif, sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .eyebrow {
+      margin: 2px 0 0;
+      color: var(--text-soft);
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .status {
+      flex: none;
+      gap: 8px;
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .signal-light {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--wire);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--wire) 18%, transparent);
+    }
+
+    .shell[data-active="true"] .signal-light {
+      background: var(--signal);
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--signal) 18%, transparent);
+      animation: call-pulse 1.8s ease-in-out infinite;
+    }
+
+    .shell[data-success="true"] .signal-light {
+      background: var(--relay);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--relay) 20%, transparent);
+      animation: none;
+    }
+
+    .shell[data-failed="true"] .signal-light {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 18%, transparent);
+      animation: none;
+    }
+
+    .switchboard {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding: 17px 18px 13px;
+    }
+
+    .switchboard::before {
+      content: "";
+      position: absolute;
+      left: calc(12.5% + 18px);
+      right: calc(12.5% + 18px);
+      top: 24px;
+      height: 2px;
+      background: var(--line);
+    }
+
+    .cable-fill {
+      position: absolute;
+      left: calc(12.5% + 18px);
+      right: calc(12.5% + 18px);
+      top: 24px;
+      height: 2px;
+      background: var(--signal);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 420ms cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .step {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      min-width: 0;
+      color: var(--text-soft);
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .step-dot {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--line);
+      border-radius: 50%;
+      background: var(--surface);
+      transition: border-color 180ms ease, background 180ms ease;
+    }
+
+    .step[data-complete="true"] .step-dot,
+    .step[data-current="true"] .step-dot {
+      border-color: var(--signal);
+      background: var(--signal);
+    }
+
+    .step[data-current="true"] { color: var(--text); }
+
+    .call-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      padding: 22px 24px 24px;
+    }
+
+    .recipient { min-width: 0; }
+
+    .recipient-label {
+      margin: 0 0 5px;
+      color: var(--text-soft);
+      font-size: 12px;
+    }
+
+    .recipient-name {
+      overflow: hidden;
+      margin: 0;
+      font-family: "Bricolage Grotesque", "Arial Narrow", ui-sans-serif, sans-serif;
+      font-size: clamp(26px, 5vw, 42px);
+      line-height: 1.02;
+      font-weight: 700;
+      letter-spacing: -0.045em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .destination {
+      margin: 8px 0 0;
+      color: var(--text-soft);
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    .timer-block {
+      align-self: center;
+      min-width: 92px;
+      text-align: right;
+    }
+
+    .timer {
+      margin: 0;
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 25px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+    }
+
+    .phase {
+      margin: 6px 0 0;
+      color: var(--text-soft);
+      font-size: 11px;
+    }
+
+    .goal {
+      grid-column: 1 / -1;
+      margin: 2px 0 0;
+      padding: 14px 0 0;
+      border-top: 1px solid var(--line);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .meta-row {
+      grid-column: 1 / -1;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta {
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--text-soft);
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10px;
+    }
+
+    .result {
+      grid-column: 1 / -1;
+      display: none;
+      padding: 15px;
+      border: 1px solid color-mix(in srgb, var(--relay) 70%, var(--line));
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--relay) 18%, var(--surface-raised));
+    }
+
+    .shell[data-terminal="true"] .result[data-visible="true"] { display: block; }
+
+    .result-heading {
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .result-summary {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .error {
+      grid-column: 1 / -1;
+      display: none;
+      margin: 0;
+      padding: 12px;
+      border-left: 3px solid var(--signal);
+      background: color-mix(in srgb, var(--signal) 8%, var(--surface-raised));
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .error[data-visible="true"] { display: block; }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 15px 18px;
+      border-top: 1px solid var(--line);
+      background: var(--surface-raised);
+    }
+
+    .privacy {
+      min-width: 0;
+      gap: 8px;
+      color: var(--text-soft);
+      font-size: 11px;
+    }
+
+    .actions { flex: none; gap: 8px; }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: transform 120ms ease, border-color 120ms ease;
+    }
+
+    .button:hover:not(:disabled) { border-color: var(--text-soft); }
+    .button:active:not(:disabled) { transform: translateY(1px); }
+
+    .button-primary {
+      border-color: var(--signal);
+      background: var(--signal);
+      color: var(--ink);
+    }
+
+    .button-listen[data-streaming="true"] {
+      border-color: var(--cobalt);
+      background: color-mix(in srgb, var(--cobalt) 12%, var(--surface));
+      color: var(--text);
+    }
+
+    .button-listen[data-streaming="true"] svg {
+      color: var(--cobalt);
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: 0.48;
+    }
+
+    .preview-flag {
+      display: none;
+      margin-left: 6px;
+      color: var(--cobalt);
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .shell[data-preview="true"] .preview-flag { display: inline; }
+
+    svg {
+      width: 17px;
+      height: 17px;
+      flex: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @keyframes call-pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.82); opacity: 0.62; }
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 4px; }
+      .shell { border-radius: 14px; }
+      .topbar { padding-inline: 14px; }
+      .call-body {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 14px;
+        padding: 18px 16px 20px;
+      }
+      .controls {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .privacy { justify-content: center; }
+      .actions {
+        width: 100%;
+        min-width: 0;
+        flex-wrap: wrap;
+      }
+      .button {
+        min-width: 0;
+        flex: 1 1 120px;
+      }
+      .switchboard { padding-inline: 8px; }
+      .switchboard::before,
+      .cable-fill {
+        left: calc(12.5% + 8px);
+      }
+      .switchboard::before { right: calc(12.5% + 8px); }
+      .cable-fill { right: calc(12.5% + 8px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell" id="fredo-phone" data-active="false" data-terminal="false" data-preview="false">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M7.5 4.5h2l1.3 4-1.7 1.4a14.8 14.8 0 0 0 5 5l1.4-1.7 4 1.3v2A3 3 0 0 1 16.3 20C9.5 19.2 4.8 14.5 4 7.7A3 3 0 0 1 7.5 4.5Z"/></svg>
+        </span>
+        <div>
+          <p class="brand-name">Fredo <span class="preview-flag" data-copy="preview">Preview</span></p>
+          <p class="eyebrow" data-copy="eyebrow">Verified phone action</p>
+        </div>
+      </div>
+      <div class="status" role="status" aria-live="polite">
+        <span class="signal-light" aria-hidden="true"></span>
+        <span id="status-label">Preparing</span>
+      </div>
+    </header>
+
+    <section class="switchboard" aria-label="Call progress" id="switchboard">
+      <span class="cable-fill" id="cable-fill" aria-hidden="true"></span>
+      <div class="step" data-step="0"><span class="step-dot"></span><span data-copy="stepReady">Ready</span></div>
+      <div class="step" data-step="1"><span class="step-dot"></span><span data-copy="stepDialing">Dialing</span></div>
+      <div class="step" data-step="2"><span class="step-dot"></span><span data-copy="stepConnected">Connected</span></div>
+      <div class="step" data-step="3"><span class="step-dot"></span><span data-copy="stepDone">Done</span></div>
+    </section>
+
+    <section class="call-body">
+      <div class="recipient">
+        <p class="recipient-label" data-copy="calling">Calling</p>
+        <h1 class="recipient-name" id="recipient-name">Contact</h1>
+        <p class="destination" id="destination">Number hidden</p>
+      </div>
+      <div class="timer-block">
+        <p class="timer" id="timer" aria-label="Elapsed time">00:00</p>
+        <p class="phase" id="phase-label">Waiting</p>
+      </div>
+
+      <p class="goal" id="call-goal">Call details will appear after confirmation.</p>
+
+      <div class="meta-row" aria-label="Call safeguards">
+        <span class="meta" id="language-meta">FR</span>
+        <span class="meta" data-copy="notRecorded">Not recorded</span>
+        <span class="meta" id="duration-meta">Max 03:00</span>
+      </div>
+
+      <section class="result" id="result" data-visible="false" aria-labelledby="result-title">
+        <div class="result-heading" id="result-title">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg>
+          <span data-copy="result">Call result</span>
+        </div>
+        <p class="result-summary" id="result-summary"></p>
+      </section>
+
+      <p class="error" id="error" data-visible="false" role="alert"></p>
+    </section>
+
+    <footer class="controls">
+      <div class="privacy">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10V7a4 4 0 0 1 8 0v3"/><rect x="5" y="10" width="14" height="10" rx="2"/></svg>
+        <span data-copy="privacy">Verified caller · synthetic voice disclosed</span>
+      </div>
+      <div class="actions">
+        <button class="button button-listen" id="listen-button" type="button" hidden data-streaming="false" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14a2 2 0 0 1 2-2h1v7H6a2 2 0 0 1-2-2v-3ZM20 14a2 2 0 0 0-2-2h-1v7h1a2 2 0 0 0 2-2v-3Z"/></svg>
+          <span data-copy="listen">Listen</span>
+        </button>
+        <button class="button" id="refresh-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M4 18v-5h5"/><path d="M18.3 9A7 7 0 0 0 6.1 6.1L4 8M5.7 15A7 7 0 0 0 17.9 17.9L20 16"/></svg>
+          <span data-copy="refresh">Refresh</span>
+        </button>
+        <button class="button button-primary" id="hangup-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 15.5c4.3-3.3 8.7-3.3 13 0l1.5-3c-5.3-4-10.7-4-16 0l1.5 3Z"/><path d="M8 14v3M16 14v3"/></svg>
+          <span data-copy="hangup">Hang up</span>
+        </button>
+      </div>
+    </footer>
+    <audio id="live-audio" preload="none" playsinline hidden></audio>
+    <p class="sr-only" id="announcer" aria-live="assertive"></p>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const ACTIVE_STATES = new Set(["dialing", "in_progress"]);
+      const TERMINAL_STATES = new Set(["completed", "no_answer", "declined", "failed", "cancelled"]);
+      const POLL_INTERVAL_MS = 1800;
+      const PREVIEW_STATE = {
+        call_id: "preview-call",
+        status: "dialing",
+        display: {
+          recipient_label: "Restaurant Le Select",
+          destination_masked: "+32 •••• ••42",
+          call_goal: "Reserve a table for four tonight at 21:00 under Gabriel.",
+          language: "fr",
+          max_duration_seconds: 180,
+          elapsed_seconds: 0,
+          phase: "ringing",
+          recorded: false,
+          live_listen_available: false
+        }
+      };
+
+      const copy = {
+        en: {
+          preview: "Preview",
+          eyebrow: "Verified phone action",
+          stepReady: "Ready",
+          stepDialing: "Dialing",
+          stepConnected: "Connected",
+          stepDone: "Done",
+          calling: "Calling",
+          notRecorded: "Not recorded",
+          result: "Call result",
+          privacy: "Verified caller · listen-only · not recorded",
+          listen: "Listen",
+          listenLoading: "Connecting…",
+          listenPlaying: "Stop listening",
+          listenResume: "Start listening",
+          listeningNow: "Live listening started.",
+          listenStopped: "Live listening stopped.",
+          listenUnavailable: "Live listening is unavailable for this call.",
+          listenFailed: "Could not open the live audio stream. Try again.",
+          refresh: "Refresh",
+          refreshing: "Refreshing…",
+          hangup: "Hang up",
+          hangingUp: "Hanging up…",
+          waiting: "Waiting",
+          awaitingConfirmation: "Awaiting confirmation",
+          preparing: "Preparing",
+          dialing: "Dialing",
+          ringing: "Ringing",
+          connected: "Connected",
+          listening: "Listening",
+          speaking: "Speaking",
+          wrappingUp: "Wrapping up",
+          completed: "Completed",
+          noAnswer: "No answer",
+          declined: "Declined",
+          failed: "Failed",
+          cancelled: "Cancelled",
+          hiddenNumber: "Number hidden",
+          contact: "Contact",
+          detailsPending: "Call details will appear after confirmation.",
+          unavailable: "The phone controls are unavailable outside Codex.",
+          refreshFailed: "Could not refresh the call. Try again.",
+          cancelFailed: "The call could not be ended. Refresh its status before retrying.",
+          maxDuration: "Max",
+          statusChanged: "Call status:"
+        },
+        fr: {
+          preview: "Aperçu",
+          eyebrow: "Action téléphonique vérifiée",
+          stepReady: "Prêt",
+          stepDialing: "Appel",
+          stepConnected: "Connecté",
+          stepDone: "Terminé",
+          calling: "Appel vers",
+          notRecorded: "Non enregistré",
+          result: "Résultat de l’appel",
+          privacy: "Appel vérifié · écoute seule · non enregistré",
+          listen: "Écouter",
+          listenLoading: "Connexion…",
+          listenPlaying: "Couper l’écoute",
+          listenResume: "Lancer l’écoute",
+          listeningNow: "Écoute en direct activée.",
+          listenStopped: "Écoute en direct coupée.",
+          listenUnavailable: "L’écoute en direct n’est pas disponible pour cet appel.",
+          listenFailed: "Impossible d’ouvrir le flux audio en direct. Réessayez.",
+          refresh: "Actualiser",
+          refreshing: "Actualisation…",
+          hangup: "Raccrocher",
+          hangingUp: "Raccrochage…",
+          waiting: "En attente",
+          awaitingConfirmation: "Confirmation requise",
+          preparing: "Préparation",
+          dialing: "Appel en cours",
+          ringing: "Ça sonne",
+          connected: "Connecté",
+          listening: "Écoute",
+          speaking: "Fredo parle",
+          wrappingUp: "Conclusion",
+          completed: "Terminé",
+          noAnswer: "Pas de réponse",
+          declined: "Refusé",
+          failed: "Échec",
+          cancelled: "Annulé",
+          hiddenNumber: "Numéro masqué",
+          contact: "Contact",
+          detailsPending: "Les détails apparaîtront après confirmation.",
+          unavailable: "Les contrôles téléphoniques sont disponibles uniquement dans Codex.",
+          refreshFailed: "Impossible d’actualiser l’appel. Réessayez.",
+          cancelFailed: "Impossible de raccrocher. Actualisez le statut avant de réessayer.",
+          maxDuration: "Max",
+          statusChanged: "Statut de l’appel :"
+        }
+      };
+
+      const elements = {
+        root: document.getElementById("fredo-phone"),
+        status: document.getElementById("status-label"),
+        recipient: document.getElementById("recipient-name"),
+        destination: document.getElementById("destination"),
+        timer: document.getElementById("timer"),
+        phase: document.getElementById("phase-label"),
+        goal: document.getElementById("call-goal"),
+        language: document.getElementById("language-meta"),
+        duration: document.getElementById("duration-meta"),
+        cable: document.getElementById("cable-fill"),
+        steps: Array.from(document.querySelectorAll(".step")),
+        result: document.getElementById("result"),
+        resultSummary: document.getElementById("result-summary"),
+        error: document.getElementById("error"),
+        listen: document.getElementById("listen-button"),
+        audio: document.getElementById("live-audio"),
+        refresh: document.getElementById("refresh-button"),
+        hangup: document.getElementById("hangup-button"),
+        announcer: document.getElementById("announcer")
+      };
+
+      const bridge = window.openai;
+      const locale = String(bridge?.locale || navigator.language || "en").toLowerCase().startsWith("fr") ? "fr" : "en";
+      const t = copy[locale];
+      let state = normalizeState(bridge?.toolOutput || (!bridge ? PREVIEW_STATE : {}));
+      let receivedAt = Date.now();
+      let pollTimer = 0;
+      let tickingTimer = 0;
+      let requestInFlight = false;
+      let audioRequestInFlight = false;
+      let audioMode = "idle";
+      let activeStreamUrl = "";
+      let lastAnnouncedStatus = "";
+
+      document.documentElement.lang = locale;
+      document.querySelectorAll("[data-copy]").forEach((node) => {
+        const key = node.getAttribute("data-copy");
+        if (key && t[key]) node.textContent = t[key];
+      });
+
+      function text(value, fallback = "") {
+        return typeof value === "string" && value.trim() ? value.trim() : fallback;
+      }
+
+      function number(value, fallback = 0) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function unwrapToolResult(value) {
+        if (!value || typeof value !== "object") return {};
+        if (value.structuredContent && typeof value.structuredContent === "object") return value.structuredContent;
+        if (value.result?.structuredContent && typeof value.result.structuredContent === "object") return value.result.structuredContent;
+        if (value.result && typeof value.result === "object") return value.result;
+        return value;
+      }
+
+      function maskPhone(value) {
+        const raw = text(value);
+        if (!raw) return t.hiddenNumber;
+        if (raw.includes("•") || raw.includes("*")) return raw;
+        const digits = raw.replace(/\D/g, "");
+        if (digits.length < 4) return t.hiddenNumber;
+        const prefix = raw.startsWith("+") ? `+${digits.slice(0, Math.min(2, digits.length - 2))}` : "";
+        return `${prefix}${prefix ? " " : ""}•••• ••${digits.slice(-2)}`;
+      }
+
+      function normalizeState(value) {
+        const raw = unwrapToolResult(value);
+        const display = raw.display && typeof raw.display === "object" ? raw.display : {};
+        const elapsedValue = display.elapsed_seconds ?? raw.elapsed_seconds;
+        const listenValue = display.live_listen_available ?? raw.live_listen_available;
+        return {
+          callId: text(raw.call_id || raw.callId),
+          taskId: text(raw.task_id || raw.taskId),
+          status: text(raw.status, "ready_for_review").toLowerCase(),
+          phase: text(display.phase || raw.phase).toLowerCase(),
+          recipient: text(display.recipient_label || raw.recipient_label, t?.contact || "Contact"),
+          destination: maskPhone(display.destination_masked || raw.destination_masked),
+          goal: text(display.call_goal || raw.call_goal, t?.detailsPending || "Call details will appear after confirmation."),
+          language: text(display.language || raw.language, locale).slice(0, 2).toUpperCase(),
+          maxDuration: Math.max(0, number(display.max_duration_seconds || raw.max_duration_seconds, 180)),
+          elapsed: Math.max(0, number(elapsedValue, 0)),
+          elapsedProvided: elapsedValue !== null && elapsedValue !== undefined && elapsedValue !== "" && Number.isFinite(Number(elapsedValue)),
+          connectedAt: text(display.connected_at ?? raw.connected_at),
+          endedAt: text(display.ended_at ?? raw.ended_at),
+          serverNow: text(display.server_now ?? raw.server_now),
+          liveListenAvailable: Boolean(listenValue),
+          liveListenProvided: listenValue !== null && listenValue !== undefined,
+          summary: text(raw.summary || display.summary),
+          outcome: text(raw.outcome || display.outcome),
+          error: text(raw.error || raw.message),
+          recorded: Boolean(display.recorded ?? raw.recorded ?? false)
+        };
+      }
+
+      function statusCopy(current) {
+        const mapping = {
+          detected: t.preparing,
+          needs_input: t.preparing,
+          ready_for_review: t.awaitingConfirmation,
+          needs_confirmation: t.awaitingConfirmation,
+          confirmed: t.preparing,
+          dialing: t.dialing,
+          in_progress: t.connected,
+          completed: t.completed,
+          no_answer: t.noAnswer,
+          declined: t.declined,
+          failed: t.failed,
+          cancelled: t.cancelled
+        };
+        return mapping[current] || t.preparing;
+      }
+
+      function phaseCopy(current, status) {
+        const mapping = {
+          ringing: t.ringing,
+          listening: t.listening,
+          speaking: t.speaking,
+          wrapping_up: t.wrappingUp,
+          wrapping: t.wrappingUp
+        };
+        return mapping[current] || statusCopy(status);
+      }
+
+      function progressIndex(current) {
+        if (TERMINAL_STATES.has(current)) return 3;
+        if (current === "in_progress") return 2;
+        if (current === "dialing") return 1;
+        return 0;
+      }
+
+      function formatDuration(totalSeconds) {
+        const safe = Math.max(0, Math.floor(totalSeconds));
+        const minutes = Math.floor(safe / 60);
+        const seconds = safe % 60;
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      }
+
+      function timestamp(value) {
+        const parsed = Date.parse(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      function elapsedNow() {
+        const connectedAt = timestamp(state.connectedAt);
+        const endedAt = timestamp(state.endedAt);
+        if (connectedAt && endedAt) {
+          return Math.max(0, Math.floor((endedAt - connectedAt) / 1000));
+        }
+        if (state.status !== "in_progress") return state.status === "dialing" ? 0 : state.elapsed;
+        const serverNow = timestamp(state.serverNow);
+        if (connectedAt && serverNow) {
+          return Math.max(0, Math.floor((serverNow + Date.now() - receivedAt - connectedAt) / 1000));
+        }
+        return state.elapsed + Math.floor((Date.now() - receivedAt) / 1000);
+      }
+
+      function setButtonCopy(button, key) {
+        const label = button.querySelector("span");
+        if (label) label.textContent = t[key];
+      }
+
+      function streamDescriptor(value) {
+        const candidates = [
+          value,
+          value?.result,
+          value?._meta,
+          value?.result?._meta,
+          value?.mcp_tool_result,
+          value?.call_tool_result,
+          value?.result?.mcp_tool_result,
+          bridge?.toolResponseMetadata,
+          bridge?.toolResponseMetadata?._meta,
+          bridge?.toolResponseMetadata?.mcp_tool_result,
+          bridge?.toolResponseMetadata?.call_tool_result
+        ];
+        for (const candidate of candidates) {
+          if (!candidate || typeof candidate !== "object") continue;
+          const metadata = candidate._meta && typeof candidate._meta === "object" ? candidate._meta : candidate;
+          const descriptor = metadata.audio_stream || metadata.live_audio_stream || metadata["fredo/audioStream"];
+          if (descriptor && typeof descriptor === "object") return descriptor;
+        }
+        return {};
+      }
+
+      function secureStreamUrl(value) {
+        const parsed = new URL(text(value));
+        if (parsed.protocol !== "https:") throw new Error("Live audio requires HTTPS.");
+        return parsed.href;
+      }
+
+      function renderListenControl() {
+        const available = state.status === "in_progress" && state.liveListenAvailable;
+        const streamActive = ["buffering", "playing"].includes(audioMode);
+        elements.listen.hidden = !available && audioMode === "idle";
+        elements.listen.disabled = !bridge?.callTool || audioRequestInFlight;
+        elements.listen.dataset.streaming = String(streamActive);
+        elements.listen.setAttribute("aria-pressed", String(streamActive));
+        if (audioRequestInFlight) setButtonCopy(elements.listen, "listenLoading");
+        else if (streamActive) setButtonCopy(elements.listen, "listenPlaying");
+        else if (activeStreamUrl) setButtonCopy(elements.listen, "listenResume");
+        else setButtonCopy(elements.listen, "listen");
+      }
+
+      function stopListening(options = {}) {
+        const { announce = false, update = true } = options;
+        elements.audio.pause();
+        elements.audio.removeAttribute("src");
+        activeStreamUrl = "";
+        elements.audio.load();
+        audioMode = "idle";
+        if (announce) elements.announcer.textContent = t.listenStopped;
+        if (update) renderListenControl();
+      }
+
+      async function playLiveAudio() {
+        try {
+          await elements.audio.play();
+        } catch (error) {
+          audioMode = "ready";
+          renderListenControl();
+        }
+      }
+
+      async function toggleListening() {
+        if (["buffering", "playing"].includes(audioMode)) {
+          stopListening({ announce: true });
+          return;
+        }
+        if (activeStreamUrl) {
+          await playLiveAudio();
+          return;
+        }
+        if (!bridge?.callTool || state.status !== "in_progress" || !state.liveListenAvailable) {
+          elements.error.textContent = t.listenUnavailable;
+          elements.error.dataset.visible = "true";
+          return;
+        }
+
+        audioRequestInFlight = true;
+        audioMode = "loading";
+        renderListenControl();
+        try {
+          const response = await bridge.callTool("bond.open_phone_audio_stream", { call_id: state.callId });
+          const descriptor = streamDescriptor(response);
+          activeStreamUrl = secureStreamUrl(descriptor.url || descriptor.stream_url);
+          elements.audio.src = activeStreamUrl;
+          elements.audio.load();
+          audioMode = "ready";
+          elements.error.dataset.visible = "false";
+          await playLiveAudio();
+        } catch (error) {
+          stopListening({ update: false });
+          elements.error.textContent = t.listenFailed;
+          elements.error.dataset.visible = "true";
+        } finally {
+          audioRequestInFlight = false;
+          renderListenControl();
+        }
+      }
+
+      function render() {
+        const active = ACTIVE_STATES.has(state.status);
+        const terminal = TERMINAL_STATES.has(state.status);
+        const index = progressIndex(state.status);
+        const statusLabel = statusCopy(state.status);
+
+        elements.root.dataset.active = String(active);
+        elements.root.dataset.terminal = String(terminal);
+        elements.root.dataset.success = String(state.status === "completed");
+        elements.root.dataset.failed = String(state.status === "failed");
+        elements.root.dataset.preview = String(!bridge);
+        elements.status.textContent = statusLabel;
+        elements.recipient.textContent = state.recipient;
+        elements.destination.textContent = state.destination;
+        elements.timer.textContent = formatDuration(elapsedNow());
+        elements.phase.textContent = phaseCopy(state.phase, state.status);
+        elements.goal.textContent = state.goal;
+        elements.language.textContent = state.language;
+        elements.duration.textContent = `${t.maxDuration} ${formatDuration(state.maxDuration)}`;
+
+        elements.cable.style.transform = `scaleX(${index / 3})`;
+        elements.steps.forEach((step, stepIndex) => {
+          step.dataset.complete = String(stepIndex < index || (terminal && stepIndex === index));
+          step.dataset.current = String(stepIndex === index && !terminal);
+          if (stepIndex === index) step.setAttribute("aria-current", "step");
+          else step.removeAttribute("aria-current");
+        });
+
+        const hasResult = terminal && Boolean(state.summary || state.outcome);
+        elements.result.dataset.visible = String(hasResult);
+        elements.resultSummary.textContent = state.summary || state.outcome;
+
+        const hasError = Boolean(state.error) && (state.status === "failed" || !terminal);
+        elements.error.dataset.visible = String(hasError);
+        elements.error.textContent = state.error;
+
+        elements.hangup.hidden = !active;
+        elements.hangup.disabled = !bridge || requestInFlight;
+        elements.refresh.disabled = !bridge || !state.callId || requestInFlight;
+        renderListenControl();
+
+        if (state.status !== lastAnnouncedStatus) {
+          elements.announcer.textContent = `${t.statusChanged} ${statusLabel}`;
+          lastAnnouncedStatus = state.status;
+        }
+
+        bridge?.notifyIntrinsicHeight?.();
+      }
+
+      function updateState(value) {
+        const currentElapsed = elapsedNow();
+        const next = normalizeState(value);
+        state = {
+          ...state,
+          ...next,
+          callId: next.callId || state.callId,
+          taskId: next.taskId || state.taskId,
+          elapsed: next.elapsedProvided ? next.elapsed : currentElapsed,
+          connectedAt: next.connectedAt || state.connectedAt,
+          endedAt: next.endedAt || state.endedAt,
+          liveListenAvailable: next.liveListenProvided ? next.liveListenAvailable : state.liveListenAvailable,
+          recipient: next.recipient === t.contact ? state.recipient : next.recipient,
+          destination: next.destination === t.hiddenNumber ? state.destination : next.destination,
+          goal: next.goal === t.detailsPending ? state.goal : next.goal
+        };
+        if (state.status !== "in_progress") stopListening({ update: false });
+        receivedAt = Date.now();
+        render();
+        schedulePoll();
+      }
+
+      function extractNotification(event) {
+        if (event.source !== window.parent) return null;
+        const message = event.data;
+        if (!message || message.jsonrpc !== "2.0") return null;
+        if (message.method !== "ui/notifications/tool-result") return null;
+        return message.params?.structuredContent || null;
+      }
+
+      async function refreshStatus(options = {}) {
+        const { manual = false } = options;
+        if (!bridge?.callTool || !state.callId || requestInFlight) return;
+        requestInFlight = true;
+        if (manual) setButtonCopy(elements.refresh, "refreshing");
+        render();
+        try {
+          const response = await bridge.callTool("bond.get_phone_task_status", { call_id: state.callId });
+          updateState(response);
+          elements.error.dataset.visible = "false";
+        } catch (error) {
+          elements.error.textContent = t.refreshFailed;
+          elements.error.dataset.visible = "true";
+        } finally {
+          requestInFlight = false;
+          setButtonCopy(elements.refresh, "refresh");
+          render();
+        }
+      }
+
+      async function hangUp() {
+        if (!bridge?.callTool || !state.callId || requestInFlight) return;
+        stopListening({ update: false });
+        requestInFlight = true;
+        setButtonCopy(elements.hangup, "hangingUp");
+        render();
+        try {
+          const response = await bridge.callTool("bond.cancel_phone_task", { call_id: state.callId });
+          updateState(response);
+        } catch (error) {
+          elements.error.textContent = t.cancelFailed;
+          elements.error.dataset.visible = "true";
+        } finally {
+          requestInFlight = false;
+          setButtonCopy(elements.hangup, "hangup");
+          render();
+        }
+      }
+
+      function schedulePoll() {
+        window.clearTimeout(pollTimer);
+        if (!bridge || !state.callId || !ACTIVE_STATES.has(state.status) || document.hidden) return;
+        pollTimer = window.setTimeout(() => refreshStatus(), POLL_INTERVAL_MS);
+      }
+
+      function applyTheme(value) {
+        const theme = value === "dark" ? "dark" : value === "light" ? "light" : "";
+        if (theme) document.documentElement.dataset.theme = theme;
+      }
+
+      elements.refresh.addEventListener("click", () => {
+        if (!bridge) {
+          elements.error.textContent = t.unavailable;
+          elements.error.dataset.visible = "true";
+          return;
+        }
+        refreshStatus({ manual: true });
+      });
+
+      elements.listen.addEventListener("click", toggleListening);
+      elements.hangup.addEventListener("click", hangUp);
+
+      elements.audio.addEventListener("playing", () => {
+        audioMode = "playing";
+        elements.announcer.textContent = t.listeningNow;
+        renderListenControl();
+      });
+
+      elements.audio.addEventListener("waiting", () => {
+        if (!elements.audio.paused && activeStreamUrl) {
+          audioMode = "buffering";
+          renderListenControl();
+        }
+      });
+
+      elements.audio.addEventListener("error", () => {
+        if (!activeStreamUrl) return;
+        stopListening({ update: false });
+        elements.error.textContent = t.listenFailed;
+        elements.error.dataset.visible = "true";
+        renderListenControl();
+      });
+
+      window.addEventListener("message", (event) => {
+        const payload = extractNotification(event);
+        if (payload) updateState(payload);
+      }, { passive: true });
+
+      window.addEventListener("openai:set_globals", (event) => {
+        const globals = event.detail?.globals;
+        if (!globals) return;
+        applyTheme(globals.theme);
+        if (globals.toolOutput) updateState(globals.toolOutput);
+      }, { passive: true });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stopListening();
+        schedulePoll();
+      }, { passive: true });
+
+      applyTheme(bridge?.theme);
+      render();
+      schedulePoll();
+      tickingTimer = window.setInterval(() => {
+        if (state.status === "in_progress") elements.timer.textContent = formatDuration(elapsedNow());
+      }, 1000);
+
+      window.addEventListener("beforeunload", () => {
+        stopListening({ update: false });
+        window.clearTimeout(pollTimer);
+        window.clearInterval(tickingTimer);
+      }, { once: true });
+    })();
+  </script>
+</body>
+</html>

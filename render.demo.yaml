@@ -6,7 +6,9 @@ services:
     # call state; provider credentials remain in Render's secret environment.
     plan: free
     dockerfilePath: ./deploy/Dockerfile.relay
-    healthCheckPath: /healthz
+    # Strict readiness: reject traffic when carrier configuration or enabled
+    # live-listen encoding is unavailable.
+    healthCheckPath: /readyz
     envVars:
       - key: FREDO_TELEPHONY_PROVIDER
         value: real
@@ -22,6 +24,8 @@ services:
         value: 1
       - key: FREDO_DEMO_PUBLIC
         value: 1
+      - key: FREDO_ALLOW_UNLISTED_DESTINATIONS
+        value: 1
       - key: DEEPGRAM_API_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID
@@ -35,4 +39,6 @@ services:
       - key: FREDO_ALLOWED_NUMBERS
         sync: false
       - key: FREDO_PUBLIC_URL
+        sync: false
+      - key: FREDO_AUDIO_STREAM_ORIGIN
         sync: false

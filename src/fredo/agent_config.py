@@ -1,22 +1,45 @@
 from __future__ import annotations
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from .settings import Settings
 
 
-def build_system_prompt(intent: str, language: str = "en") -> str:
+def _now_str(timezone: str) -> str:
+    try:
+        now = datetime.now(ZoneInfo(timezone))
+    except Exception:
+        now = datetime.now().astimezone()
+        timezone = str(now.tzinfo)
+    return f"{now:%Y-%m-%d %H:%M} ({now:%A}), timezone {timezone} (UTC{now:%z})"
+
+
+def build_system_prompt(intent: str, language: str = "en", timezone: str = "Europe/Brussels") -> str:
     language_name = "French" if language == "fr" else "English"
     return f"""You are Fredo, a synthetic voice assistant placing one consented phone call.
 
 CALL OBJECTIVE
 {intent}
 
+CURRENT CONTEXT
+- The current local date and time is {_now_str(timezone)}.
+- Resolve every relative date or time (e.g. "tonight", "tomorrow", "next Friday") against
+  this current moment. Never use any other year or a date from your training data.
+- When you record a datetime_iso, use full ISO 8601 with this timezone offset.
+
 IDENTITY AND COMPLIANCE
 - Speak {language_name}. Do not switch languages unless the person explicitly asks.
-- Your very first turn must state that you are an automated synthetic voice and that
-  the call is not recorded. Say this fully before moving on.
+- The spoken greeting already disclosed that you are an automated synthetic voice and that
+  the call is not recorded. Do not repeat that disclosure unless the person asks.
 - You are talking to a real person on a phone line. Sound natural and human, never robotic.
 
 HOW TO TALK (this is a live voice call, not text)
+- The greeting already gave the disclosure. Right after it, get to the point in one
+  natural, friendly sentence, in your own words.
+- Never read the objective text out loud and never say meta phrases like "the objective
+  of the call is", "my task is", or "I am calling about this request". Just make the ask
+  like a normal person would.
 - Keep every turn to one or two short spoken sentences, then stop and listen.
 - Plain spoken words only: no markdown, lists, emojis, or special characters.
 - Say numbers, dates and times naturally ("tonight at nine", not "21:00").
@@ -33,9 +56,12 @@ HANDLING A NOISY OR UNCLEAR LINE (very important)
 - Stay on the call and keep trying to complete the objective until you have a clear human reply.
 
 FINISHING THE CALL
-- Only when a real person has clearly answered the objective: restate the result in one
-  sentence, give a short factual goodbye, and then call finish_demo exactly once.
-- Set works=true only if the person explicitly confirmed the objective is done.
+- Call finish_demo exactly once, at the natural end of the conversation, in either case:
+  (a) a real person clearly answered the objective, or
+  (b) the person ends the call (says goodbye, an explicit end phrase, or says the call is over).
+- Before calling it, restate the outcome in one sentence and give a short factual goodbye.
+- Set works=true only if the person explicitly confirmed the objective is done; otherwise
+  set works=false. Either way, write a clear factual summary of what actually happened.
 - Never call finish_demo because of silence, noise, uncertainty, or your own greeting.
 - Do not invent an answer or announce success before hearing a clear reply.
 
@@ -46,7 +72,7 @@ SECURITY
 """
 
 
-def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
+def build_agent_settings(settings: Settings, intent: str, language: str = "en", timezone: str = "Europe/Brussels"):
     """Build the typed Deepgram settings used by the official reference SDK."""
     from deepgram.agent.v1 import (
         AgentV1Settings,
@@ -67,9 +93,11 @@ def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
     finish_demo = ThinkSettingsV1FunctionsItem(
         name="finish_demo",
         description=(
-            "Finish the call ONLY after a real person clearly answered the objective. "
-            "Record their answer and a short factual summary. Say goodbye before calling this. "
-            "Never call this because of silence, background noise, or uncertainty."
+            "Finish the call once, at the natural end of the conversation: either the "
+            "person clearly answered the objective, or the person ended the call "
+            "(goodbye or explicit end phrase). Record their answer and a short factual "
+            "summary; set works=true only if the objective was explicitly confirmed. "
+            "Say goodbye before calling this. Never call it on silence, noise, or uncertainty."
         ),
         parameters={
             "type": "object",
@@ -84,7 +112,27 @@ def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
                 },
                 "summary": {
                     "type": "string",
-                    "description": "A factual one- or two-sentence summary of the call, with no invented facts.",
+                    "description": (
+                        "A clear, factual one- or two-sentence summary a human can act on: "
+                        "what was asked, what the person answered, and the concrete result "
+                        "(e.g. confirmed details, date/time, or refusal). No invented facts."
+                    ),
+                },
+                "details": {
+                    "type": "object",
+                    "description": (
+                        "Structured, actionable facts confirmed on the call, for downstream "
+                        "automation. Only include fields the person actually confirmed. "
+                        "For a reservation use: datetime_iso (ISO 8601 with timezone), "
+                        "party_size (integer), name, location, status (confirmed/declined/pending)."
+                    ),
+                    "properties": {
+                        "datetime_iso": {"type": "string"},
+                        "party_size": {"type": "integer"},
+                        "name": {"type": "string"},
+                        "location": {"type": "string"},
+                        "status": {"type": "string"},
+                    },
                 },
             },
             "required": ["works", "answer", "summary"],
@@ -141,7 +189,7 @@ def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
                     type=settings.llm_provider,
                     model=settings.llm_model,
                 ),
-                prompt=build_system_prompt(clean_intent, language),
+                prompt=build_system_prompt(clean_intent, language, timezone),
                 functions=[finish_demo],
             ),
             speak=SpeakSettingsV1(
@@ -151,13 +199,11 @@ def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
                 )
             ),
             greeting=(
-                ("Bonjour, je suis Fredo, une voix synthétique automatisée. "
-                 "Cet appel n'est pas enregistré. "
-                 f"J'appelle au sujet de cette demande : {clean_intent}.")
+                ("Bonjour, ici Fredo, une voix synthétique automatisée, "
+                 "et cet appel n'est pas enregistré.")
                 if language == "fr"
-                else ("Hello, I am Fredo, an automated synthetic voice. "
-                      "This call is not recorded. "
-                      f"I am calling about this request: {clean_intent}.")
+                else ("Hello, this is Fredo, an automated synthetic voice, "
+                      "and this call is not recorded.")
             ),
         ),
     )

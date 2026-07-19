@@ -13,6 +13,10 @@ from starlette.routing import Route
 
 from fredo.settings import Settings
 
+from datetime import datetime, timezone
+
+from fredo.audio import audio_encoding_available, get_audio_hub, get_audio_tokens
+
 from .actions import build_next_actions
 from .models import TaskState
 from .policy import Policy, PolicyError, build_task
@@ -60,8 +64,15 @@ class DemoRelay:
             raise ValueError("The relay must use FREDO_TELEPHONY_PROVIDER=real")
         if not settings.demo_access_token and not settings.demo_public:
             raise ValueError("FREDO_DEMO_ACCESS_TOKEN is required on the relay")
-        if settings.demo_public and not settings.allowed_numbers:
-            raise ValueError("FREDO_ALLOWED_NUMBERS is required for public demo mode")
+        if (
+            settings.demo_public
+            and not settings.allowed_numbers
+            and not settings.allow_unlisted_destinations
+        ):
+            raise ValueError(
+                "FREDO_ALLOWED_NUMBERS or FREDO_ALLOW_UNLISTED_DESTINATIONS=1 "
+                "is required for public demo mode"
+            )
         return cls(
             settings=settings,
             store=TaskStore(settings.state_dir / "bond_tasks.sqlite3"),
@@ -76,6 +87,7 @@ class DemoRelay:
                 Route("/v1/calls", self.create_call, methods=["POST"]),
                 Route("/v1/calls/{call_id}", self.get_call, methods=["GET"]),
                 Route("/v1/calls/{call_id}/cancel", self.cancel_call, methods=["POST"]),
+                Route("/v1/calls/{call_id}/listen", self.open_listen, methods=["POST"]),
             ]
         )
         return app
@@ -161,6 +173,32 @@ class DemoRelay:
             result.status = TaskState.CANCELLED
             self.store.update(result)
         return JSONResponse(result.as_dict())
+
+    async def open_listen(self, request: Request) -> JSONResponse:
+        auth_error = self._guard(request)
+        if auth_error:
+            return auth_error
+        call_id = request.path_params["call_id"]
+        result = self.store.get(call_id)
+        if result is None:
+            return JSONResponse({"error": "not_found"}, status_code=404)
+        origin = self.settings.audio_stream_origin
+        if (
+            result.status != TaskState.IN_PROGRESS
+            or not origin
+            or not audio_encoding_available()
+            or not get_audio_hub().is_live(call_id)
+        ):
+            return JSONResponse({"status": "unavailable"})
+        token, expires_at = get_audio_tokens().mint(call_id)
+        return JSONResponse(
+            {
+                "status": "ready",
+                "url": f"{origin.rstrip('/')}/live/{token}",
+                "mime_type": "audio/mpeg",
+                "expires_at": datetime.fromtimestamp(expires_at, tz=timezone.utc).isoformat(),
+            }
+        )
 
     def _guard(self, request: Request) -> JSONResponse | None:
         if not self._authorized(request):

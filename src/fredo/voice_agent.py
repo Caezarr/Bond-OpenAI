@@ -43,16 +43,22 @@ class VoiceAgentSession:
         telephony: Telephony,
         on_transcript: TranscriptCallback,
         on_outcome: OutcomeCallback,
+        audio_publish: Callable[[str, bytes], None] | None = None,
+        timezone: str = "Europe/Brussels",
     ) -> None:
         self.twilio_ws = twilio_ws
         self.stream_sid = stream_sid
         self.provider_call_id = provider_call_id
         self.intent = intent
         self.language = language
+        self.timezone = timezone
         self.settings = settings
         self.telephony = telephony
         self.on_transcript = on_transcript
         self.on_outcome = on_outcome
+        # Optional listen-only tap. Receives raw 8 kHz mu-law per leg; never
+        # persisted. None disables live listening for this call.
+        self._audio_publish = audio_publish
         self._context_manager: Any = None
         self._connection: Any = None
         self._settings_applied = asyncio.Event()
@@ -69,6 +75,12 @@ class VoiceAgentSession:
         self._disclosure_done = asyncio.Event()
         self._disclosure_deadline = 0.0
         self._silence: SilenceMonitor | None = None
+        # Lightweight, in-memory conversation facts used to build a clear summary.
+        # No verbatim transcript is retained, logged or persisted.
+        self.disclosure_delivered = False
+        self.user_turn_count = 0
+        self.agent_turn_count = 0
+        self.outcome_captured = False
 
     async def run(self) -> None:
         if not self.settings.deepgram_api_key:
@@ -90,7 +102,7 @@ class VoiceAgentSession:
             self._connection = await self._context_manager.__aenter__()
             listen_task = asyncio.create_task(self._listen_deepgram())
             await self._connection.send_settings(
-                build_agent_settings(self.settings, self.intent, self.language)
+                build_agent_settings(self.settings, self.intent, self.language, self.timezone)
             )
             await asyncio.wait_for(self._settings_applied.wait(), timeout=8)
             self._forward_twilio_audio.set()
@@ -144,6 +156,14 @@ class VoiceAgentSession:
         await asyncio.sleep(self.settings.max_duration_seconds)
         await self.telephony.hangup(self.provider_call_id)
 
+    def _tap_audio(self, leg: str, mulaw: bytes) -> None:
+        if self._audio_publish is None:
+            return
+        try:
+            self._audio_publish(leg, mulaw)
+        except Exception:
+            logger.debug("Live audio tap failed", exc_info=True)
+
     async def _inject_agent_message(self, message: str) -> None:
         from deepgram.agent.v1 import AgentV1InjectAgentMessage
 
@@ -165,6 +185,7 @@ class VoiceAgentSession:
                 if self._forward_twilio_audio.is_set():
                     audio = base64.b64decode(data["media"]["payload"], validate=True)
                     await self._connection.send_media(audio)
+                    self._tap_audio("caller", audio)
             elif event == "mark":
                 mark_name = data.get("mark", {}).get("name")
                 if mark_name and mark_name == self._playback_mark_name:
@@ -198,6 +219,7 @@ class VoiceAgentSession:
                         "media": {"payload": audio_b64},
                     }
                 )
+                self._tap_audio("agent", raw_message)
                 continue
 
             try:
@@ -212,6 +234,9 @@ class VoiceAgentSession:
                 if str(parsed.role) == "user":
                     self._agent_audio_done_is_current = False
                     self._agent_audio_done.clear()
+                    self.user_turn_count += 1
+                else:
+                    self.agent_turn_count += 1
                 await self.on_transcript(str(parsed.role), str(parsed.content))
             elif isinstance(parsed, AgentV1UserStartedSpeaking):
                 self._agent_audio_done_is_current = False
@@ -237,6 +262,7 @@ class VoiceAgentSession:
                 self._agent_audio_done_is_current = True
                 self._agent_audio_done.set()
                 self._disclosure_done.set()
+                self.disclosure_delivered = True
                 if self._silence is not None:
                     self._silence.notify_agent_audio_done()
             elif isinstance(parsed, AgentV1Error):
@@ -258,12 +284,16 @@ class VoiceAgentSession:
                     arguments = {}
                 answer = str(arguments.get("answer", "")).strip()[:500]
                 summary = str(arguments.get("summary", "")).strip()[:1000]
+                raw_details = arguments.get("details")
+                details = raw_details if isinstance(raw_details, dict) else None
                 content = {
                     "works": arguments.get("works") is True,
                     "answer": answer,
                     "summary": summary,
+                    "details": details,
                 }
                 await self.on_outcome(content)
+                self.outcome_captured = True
                 self._finish_requested.set()
                 if self._silence is not None:
                     self._silence.stop()

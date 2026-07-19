@@ -1,0 +1,47 @@
+# Render blueprint for the public Fredo relay (Twilio callbacks + demo API).
+# The local MCP still runs via `bond-mcp serve` on the operator machine and
+# talks to this relay. Keep a single instance: one active call and the SQLite
+# store are per-process and not safe to scale horizontally.
+services:
+  - type: web
+    name: bond-openai-relay
+    runtime: python
+    plan: starter
+    numInstances: 1
+    # Liveness is /healthz. Render uses strict /readyz so a misconfigured relay
+    # never receives production traffic.
+    healthCheckPath: /readyz
+    buildCommand: pip install uv && uv sync --frozen --extra audio
+    startCommand: uv run bond-mcp relay
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.5"
+      # Relay must use the real carrier; without this the committed demo profile
+      # would flip the provider to `demo` and the relay would refuse to boot.
+      - key: FREDO_TELEPHONY_PROVIDER
+        value: real
+      # FREDO_PUBLIC_URL falls back to RENDER_EXTERNAL_URL automatically; set it
+      # explicitly only if you front the service with a custom domain.
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      - key: FREDO_ENDPOINT_SECRET
+        sync: false
+      - key: FREDO_DEMO_ACCESS_TOKEN
+        sync: false
+      - key: FREDO_ALLOWED_NUMBERS
+        sync: false
+      # Full-auto (opt-in). Leave 0/unset to keep allowlist + confirmation.
+      - key: FREDO_ALLOW_UNLISTED_DESTINATIONS
+        value: "0"
+      - key: FREDO_AUTOCONFIRM
+        value: "0"
+      # Live listen-only audio. Set to this service's public URL (e.g.
+      # https://bond-openai-relay.onrender.com) and build with `--extra audio`.
+      - key: FREDO_AUDIO_STREAM_ORIGIN
+        sync: false

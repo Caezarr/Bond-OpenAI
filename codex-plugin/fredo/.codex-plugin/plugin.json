@@ -1,7 +1,7 @@
 {
   "name": "fredo",
-  "version": "0.1.0",
-  "description": "Turn consented phone requests into guarded local Bond-OpenAI MCP calls.",
+  "version": "0.3.0",
+  "description": "Turn consented phone requests into guarded calls with a live, listen-only Fredo phone surface.",
   "author": {
     "name": "Fredo contributors"
   },
@@ -9,12 +9,14 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Fredo",
-    "shortDescription": "Guarded phone calls from Codex",
-    "longDescription": "Connects Codex to the local Bond-OpenAI MCP, preserves native call confirmation, and labels unverified results honestly.",
+    "shortDescription": "Safe calls with a listen-only live surface",
+    "longDescription": "Connects Codex to the local Bond-OpenAI MCP, preserves native call confirmation, and shows a focused phone surface with optional live listening and no recording.",
     "developerName": "Fredo contributors",
     "category": "Productivity",
     "capabilities": [
-      "Local execution"
+      "Local execution",
+      "Interactive call UI",
+      "Listen-only live audio"
     ],
     "defaultPrompt": [
       "Call a consenting recipient with Fredo.",

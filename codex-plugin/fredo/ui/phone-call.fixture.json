@@ -1,0 +1,22 @@
+{
+  "call_id": "call_demo_01",
+  "task_id": "task_demo_01",
+  "status": "in_progress",
+  "display": {
+    "recipient_label": "Restaurant Le Select",
+    "destination_masked": "+32 •••• ••42",
+    "call_goal": "Reserve a table for four tonight at 21:00 under Gabriel.",
+    "language": "fr",
+    "max_duration_seconds": 180,
+    "elapsed_seconds": 42,
+    "connected_at": "2026-07-19T14:22:08.000Z",
+    "ended_at": null,
+    "server_now": "2026-07-19T14:22:50.000Z",
+    "phase": "listening",
+    "recorded": false,
+    "live_listen_available": true
+  },
+  "outcome": null,
+  "summary": null,
+  "error": null
+}

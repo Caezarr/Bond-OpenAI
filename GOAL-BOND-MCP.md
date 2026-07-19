@@ -65,7 +65,7 @@ provider boundary, not a marketplace or a Bond dependency.
 
 Implement a standard MCP server over stdio with stable, typed schemas. The
 server must not require Bond-specific APIs and must be usable by Codex, Bond,
-Claude Desktop or another compatible MCP client.
+or another compatible MCP client.
 
 Required tools:
 
