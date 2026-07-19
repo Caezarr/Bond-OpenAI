@@ -6,7 +6,7 @@ Status: implementation contract
 ## Slash goal
 
 ```text
-/gsd-autonomous Build the complete Bond-OpenAI local MCP repository from GOAL-BOND-MCP.md. Implement the generic phone-task layer, the Fredo provider adapter, the Bond/Codex MCP tools, one-command bootstrap and client installation, policy and consent gates, call lifecycle/status persistence, documentation, tests, and a live-test checklist. Do not add a marketplace, hosted deployment, or vendor-specific platform layer. Finish with a clean repository that only needs environment variables, live provider verification, and final tests.
+/gsd-autonomous Build the complete Bond-OpenAI local MCP repository from GOAL-BOND-MCP.md. Implement the generic phone-task layer, the Fredo provider adapter, the Bond/Codex MCP tools, one-command bootstrap and client installation, policy and consent gates, call lifecycle/status persistence, documentation, tests, and a live-test checklist. Work feature-by-feature on focused branches and open one PR per feature; if GitHub access is unavailable, leave each branch and commit PR-ready and report the exact blocker. Do not add a marketplace, hosted deployment, or vendor-specific platform layer. Do not claim completion until the repository is clean, the offline test/build/audit gates pass, and only environment variables plus controlled live-provider verification remain.
 ```
 
 ## End state
