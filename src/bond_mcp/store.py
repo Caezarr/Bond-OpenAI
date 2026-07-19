@@ -10,6 +10,14 @@ from uuid import uuid4
 from .models import PhoneResult, PhoneTask, TaskState
 
 
+class IdempotencyConflict(RuntimeError):
+    pass
+
+
+class ActiveCall(RuntimeError):
+    pass
+
+
 class TaskStore:
     def __init__(self, path: Path):
         self.path = path
@@ -30,10 +38,22 @@ class TaskStore:
         key = task.idempotency_key or f"task:{task.task_id}"
         with self._lock, sqlite3.connect(self.path) as db:
             existing = db.execute(
-                "SELECT call_id, result FROM phone_tasks WHERE idempotency_key = ?", (key,)
+                "SELECT call_id, payload, result FROM phone_tasks WHERE idempotency_key = ?", (key,)
             ).fetchone()
             if existing:
-                return existing[0], PhoneResult(**_decode_result(existing[1])), True
+                stored_task = json.loads(existing[1])
+                if _canonical(stored_task) != _canonical(task.as_dict()):
+                    raise IdempotencyConflict("Idempotency key was reused with a different task")
+                return existing[0], PhoneResult(**_decode_result(existing[2])), True
+            active = db.execute("SELECT result FROM phone_tasks").fetchall()
+            if any(_decode_result(row[0])["status"] not in {
+                TaskState.COMPLETED,
+                TaskState.NO_ANSWER,
+                TaskState.DECLINED,
+                TaskState.FAILED,
+                TaskState.CANCELLED,
+            } for row in active):
+                raise ActiveCall("Another phone task is already active")
             call_id = str(uuid4())
             result = PhoneResult(task_id=task.task_id, call_id=call_id, status=TaskState.CONFIRMED)
             db.execute(
@@ -66,3 +86,7 @@ def _decode_result(raw: str) -> dict[str, object]:
     data = json.loads(raw)
     data["status"] = TaskState(data["status"])
     return data
+
+
+def _canonical(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)

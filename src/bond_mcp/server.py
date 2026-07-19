@@ -11,7 +11,7 @@ from .models import TaskState
 from .policy import Policy, PolicyError, build_task, classify
 from .providers import FredoProvider
 from .runtime import RuntimeThread
-from .store import TaskStore
+from .store import ActiveCall, IdempotencyConflict, TaskStore
 
 
 class McpServer:
@@ -102,8 +102,9 @@ class McpServer:
                     self.store.update(result)
                 return self._tool_result(request_id, result.as_dict())
             raise PolicyError("unknown_tool", f"Unknown tool: {name}")
-        except PolicyError as exc:
-            return self._tool_result(request_id, {"status": "error", "code": exc.code, "message": str(exc)}, is_error=True)
+        except (PolicyError, IdempotencyConflict, ActiveCall) as exc:
+            code = getattr(exc, "code", "idempotency_conflict" if isinstance(exc, IdempotencyConflict) else "call_busy")
+            return self._tool_result(request_id, {"status": "error", "code": code, "message": str(exc)}, is_error=True)
 
     @staticmethod
     def _result(request_id: Any, result: Any) -> dict[str, Any]:

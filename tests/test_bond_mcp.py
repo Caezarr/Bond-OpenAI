@@ -6,7 +6,7 @@ from pathlib import Path
 from bond_mcp.cli import main
 from bond_mcp.policy import Policy, PolicyError, build_task, classify
 from bond_mcp.server import McpServer
-from bond_mcp.store import TaskStore
+from bond_mcp.store import IdempotencyConflict, TaskStore
 from fredo.settings import Settings
 
 
@@ -50,6 +50,32 @@ def test_store_replays_exact_idempotency(tmp_path: Path) -> None:
     second = store.reserve(task)
     assert first[0] == second[0]
     assert second[2] is True
+
+
+def test_store_rejects_idempotency_key_reuse_with_changed_task(tmp_path: Path) -> None:
+    policy = Policy(frozenset({"+33600000000", "+33600000001"}))
+    first = build_task(
+        {
+            "task_id": "t1", "caller_identity": "Gab", "destination_phone": "+33600000000",
+            "call_goal": "Reserve a table", "consent_confirmed": True,
+            "idempotency_key": "same-key", "confirmed": True,
+        }, policy,
+    )
+    second = build_task(
+        {
+            "task_id": "t2", "caller_identity": "Gab", "destination_phone": "+33600000001",
+            "call_goal": "Cancel a table", "consent_confirmed": True,
+            "idempotency_key": "same-key", "confirmed": True,
+        }, policy,
+    )
+    store = TaskStore(tmp_path / "tasks.sqlite3")
+    store.reserve(first)
+    try:
+        store.reserve(second)
+    except IdempotencyConflict:
+        pass
+    else:
+        raise AssertionError("changed task must conflict")
 
 
 def test_mcp_initialize_and_tools_list(tmp_path: Path) -> None:
