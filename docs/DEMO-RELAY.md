@@ -10,25 +10,25 @@ machines only receive the public relay profile in `demo/profile.json`.
    operator-controlled service.
 2. Set the relay-only secrets in the hosting dashboard:
    `DEEPGRAM_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
-   `TWILIO_PHONE_NUMBER`, `FREDO_ENDPOINT_SECRET` and
-   `FREDO_DEMO_ACCESS_TOKEN`.
+   `TWILIO_PHONE_NUMBER` and `FREDO_ENDPOINT_SECRET`.
 3. Set `FREDO_ALLOWED_NUMBERS` to exact consenting E.164 destinations and
-   `FREDO_PUBLIC_URL` to the service's public HTTPS URL.
+   `FREDO_PUBLIC_URL` to the service's public HTTPS URL. For today's public
+   demo, set `FREDO_DEMO_PUBLIC=1`.
 4. From the repository root, publish the public profile with one command:
 
    ```bash
    uv run bond-mcp demo configure \
      --endpoint https://your-relay.example.com \
-     --token 'your-scoped-public-demo-token'
+     --public
    ```
 
    Commit only the resulting public profile. The command refuses to overwrite
    an active profile unless `--force` is explicitly supplied.
 
-The demo access token is not a provider credential. It is intentionally
-scoped to the demo relay, and the relay still enforces allowlist, consent,
-preview, one active call, 180-second duration and rate limits. Rotate it after
-the demo. Never place Twilio or Deepgram credentials in `profile.json`.
+The public mode still enforces allowlist, consent, preview, one active call,
+180-second duration and rate limits. Disable it after the demo. A private
+token-authenticated relay remains available when public mode is off. Never
+place Twilio or Deepgram credentials in `profile.json`.
 
 ## Jury flow
 
@@ -46,8 +46,8 @@ then be a normal task such as:
 > Call the consenting restaurant at +33600000000 and reserve a table for four
 > at 9 PM tonight under Gab.
 
-The MCP sends only the structured task and public demo token to the relay. It
-never sends provider secrets, raw audio or full transcripts.
+The MCP sends only the structured task to the relay. It never sends provider
+secrets, raw audio or full transcripts.
 
 ## Relay endpoints
 
@@ -56,6 +56,8 @@ never sends provider secrets, raw audio or full transcripts.
 - `GET /v1/calls/{call_id}`
 - `POST /v1/calls/{call_id}/cancel`
 
-All `/v1/*` endpoints require `Authorization: Bearer <demo-access-token>`.
+In public demo mode, `/v1/*` is protected by the allowlist, consent gate,
+rate limit and single-active-call policy instead of a client token. Private
+mode requires `Authorization: Bearer <demo-access-token>`.
 Twilio status and media callbacks are validated separately with
 `X-Twilio-Signature`.

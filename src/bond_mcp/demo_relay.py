@@ -13,6 +13,7 @@ from starlette.routing import Route
 
 from fredo.settings import Settings
 
+from .actions import build_next_actions
 from .models import TaskState
 from .policy import Policy, PolicyError, build_task
 from .providers import PhoneProvider, provider_from_settings
@@ -57,8 +58,10 @@ class DemoRelay:
     def from_settings(cls, settings: Settings) -> "DemoRelay":
         if settings.telephony_provider not in {"real", "mock"}:
             raise ValueError("The relay must use FREDO_TELEPHONY_PROVIDER=real")
-        if not settings.demo_access_token:
+        if not settings.demo_access_token and not settings.demo_public:
             raise ValueError("FREDO_DEMO_ACCESS_TOKEN is required on the relay")
+        if settings.demo_public and not settings.allowed_numbers:
+            raise ValueError("FREDO_ALLOWED_NUMBERS is required for public demo mode")
         return cls(
             settings=settings,
             store=TaskStore(settings.state_dir / "bond_tasks.sqlite3"),
@@ -77,7 +80,20 @@ class DemoRelay:
         )
         return app
 
+    def _policy(self) -> Policy:
+        # Mirror the stdio MCP policy so full-auto (allowlist bypass + autoconfirm)
+        # behaves identically over the HTTP relay. E.164 + forbidden blocklist
+        # are always enforced inside build_task regardless of these flags.
+        return Policy(
+            allowed_numbers=self.settings.allowed_numbers,
+            max_duration_seconds=self.settings.max_duration_seconds,
+            allow_unlisted=self.settings.allow_unlisted_destinations,
+            autoconfirm=self.settings.autoconfirm,
+        )
+
     def _authorized(self, request: Request) -> bool:
+        if self.settings.demo_public:
+            return True
         supplied = request.headers.get("authorization", "")
         expected = f"Bearer {self.settings.demo_access_token}"
         return hmac.compare_digest(supplied, expected)
@@ -96,7 +112,7 @@ class DemoRelay:
             if not isinstance(body, dict):
                 return JSONResponse({"error": "invalid_request"}, status_code=400)
             task_payload = body.get("task")
-            task = build_task(task_payload, Policy(self.settings.allowed_numbers))
+            task = build_task(task_payload, self._policy())
             if not task.confirmed:
                 raise PolicyError("confirmation_required", "A confirmed preview is required")
             remote_call_id, result, replayed = self.store.reserve(task)
@@ -123,11 +139,14 @@ class DemoRelay:
         auth_error = self._guard(request)
         if auth_error:
             return auth_error
-        result = self.store.get(request.path_params["call_id"])
+        call_id = request.path_params["call_id"]
+        result = self.store.get(call_id)
         if result is None:
             return JSONResponse({"error": "not_found"}, status_code=404)
         await self._refresh(result)
-        return JSONResponse(result.as_dict())
+        payload = result.as_dict()
+        payload["next_actions"] = build_next_actions(self.store.get_task(call_id), result)
+        return JSONResponse(payload)
 
     async def cancel_call(self, request: Request) -> JSONResponse:
         auth_error = self._guard(request)

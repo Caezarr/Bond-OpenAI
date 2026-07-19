@@ -1,6 +1,5 @@
 {
-  "endpoint": "",
-  "access_token": "",
-  "profile": "public-demo",
-  "note": "The operator fills the endpoint and rotates the scoped demo token after deploying the relay."
+  "endpoint": "https://bond-openai-demo-relay.onrender.com",
+  "public": true,
+  "profile": "public-demo"
 }

@@ -9,6 +9,11 @@ from typing import Mapping
 from dotenv import load_dotenv
 
 
+# Hard ceiling even when extended calls are explicitly enabled. One hour bounds
+# runaway cost and exposure while still allowing genuinely long conversations.
+EXTENDED_MAX_DURATION_SECONDS = 3600
+
+
 def _csv(value: str | None) -> frozenset[str]:
     if not value:
         return frozenset()
@@ -31,7 +36,7 @@ def _float(env: Mapping[str, str], name: str, default: float) -> float:
         raise ValueError(f"{name} must be a number") from exc
 
 
-def _demo_profile() -> dict[str, str]:
+def _demo_profile() -> dict[str, object]:
     """Read the public, non-secret demo relay profile shipped with the repo."""
     profile_paths = (
         Path.cwd() / "demo" / "profile.json",
@@ -77,9 +82,20 @@ class Settings:
     # Graceful silence handling instead of the model guessing an answer from noise.
     silence_reprompt_seconds: int = 12
     silence_goodbye_seconds: int = 10
+    # Full-auto orchestration. When enabled, the static allowlist and the manual
+    # consent/preview gate are bypassed; the E.164 + forbidden-number blocklist
+    # always remains enforced.
+    allow_unlisted_destinations: bool = False
+    autoconfirm: bool = False
+    # Single HTTPS origin that serves the listen-only live audio stream. Also the
+    # only extra origin allowed in the widget CSP. Empty = live listen disabled.
+    audio_stream_origin: str | None = None
     telephony_provider: str = "real"
     demo_endpoint: str | None = None
     demo_access_token: str | None = field(default=None, repr=False)
+    # Explicit operator opt-in for a public, allowlist-only hackathon relay.
+    # This is intentionally separate from the normal token-authenticated mode.
+    demo_public: bool = False
     state_dir: Path = Path(".local-state")
 
     @classmethod
@@ -90,9 +106,22 @@ class Settings:
         else:
             env = environ
 
+        # The 180 s cap is the safe default. Exceeding it is an explicit,
+        # documented operator decision (longer live calls cost more, extend
+        # exposure, and diverge from the conservative default posture).
         max_duration = _integer(env, "FREDO_MAX_DURATION_SECONDS", 180)
-        if not 10 <= max_duration <= 180:
-            raise ValueError("FREDO_MAX_DURATION_SECONDS must be between 10 and 180")
+        allow_extended = env.get("FREDO_ALLOW_EXTENDED_CALLS", "0").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        upper = EXTENDED_MAX_DURATION_SECONDS if allow_extended else 180
+        if max_duration > 180 and not allow_extended:
+            raise ValueError(
+                "FREDO_MAX_DURATION_SECONDS above 180 requires FREDO_ALLOW_EXTENDED_CALLS=1"
+            )
+        if not 10 <= max_duration <= upper:
+            raise ValueError(f"FREDO_MAX_DURATION_SECONDS must be between 10 and {upper}")
 
         max_concurrent = _integer(env, "FREDO_MAX_CONCURRENT_CALLS", 1)
         if max_concurrent != 1:
@@ -105,6 +134,10 @@ class Settings:
             or ""
         ).rstrip("/") or None
         demo_access_token = env.get("FREDO_DEMO_ACCESS_TOKEN") or profile.get("access_token") or None
+        demo_public = (
+            (env.get("FREDO_DEMO_PUBLIC", "").strip().lower() in {"1", "true", "yes"})
+            or str(profile.get("public", "")).strip().lower() in {"1", "true", "yes"}
+        )
         provider = env.get("FREDO_TELEPHONY_PROVIDER", "").strip().lower()
         if not provider:
             # A configured demo relay is the zero-credential default. Local
@@ -144,9 +177,14 @@ class Settings:
             twilio_phone_number=env.get("TWILIO_PHONE_NUMBER") or None,
             endpoint_secret=env.get("FREDO_ENDPOINT_SECRET") or None,
             allowed_numbers=_csv(env.get("FREDO_ALLOWED_NUMBERS")),
-            public_url=(env.get("FREDO_PUBLIC_URL") or "").rstrip("/") or None,
-            host=env.get("FREDO_HOST", "127.0.0.1"),
-            port=_integer(env, "FREDO_PORT", 8080),
+            public_url=(
+                env.get("FREDO_PUBLIC_URL") or env.get("RENDER_EXTERNAL_URL") or ""
+            ).rstrip("/")
+            or None,
+            # PaaS platforms (Render, Railway, Fly) inject $PORT and require the
+            # process to bind 0.0.0.0. Honor FREDO_* first, then the platform PORT.
+            host=env.get("FREDO_HOST") or ("0.0.0.0" if env.get("PORT") else "127.0.0.1"),
+            port=_integer(env, "FREDO_PORT", 0) or _integer(env, "PORT", 8080),
             max_duration_seconds=max_duration,
             max_concurrent_calls=max_concurrent,
             listen_model=env.get("FREDO_LISTEN_MODEL", "flux-general-multi"),
@@ -161,9 +199,18 @@ class Settings:
             not in {"0", "false", "no"},
             silence_reprompt_seconds=silence_reprompt,
             silence_goodbye_seconds=silence_goodbye,
+            allow_unlisted_destinations=env.get(
+                "FREDO_ALLOW_UNLISTED_DESTINATIONS", "0"
+            ).strip().lower()
+            in {"1", "true", "yes"},
+            autoconfirm=env.get("FREDO_AUTOCONFIRM", "0").strip().lower()
+            in {"1", "true", "yes"},
+            audio_stream_origin=(env.get("FREDO_AUDIO_STREAM_ORIGIN") or "").rstrip("/")
+            or None,
             telephony_provider=provider,
             demo_endpoint=demo_endpoint,
             demo_access_token=demo_access_token,
+            demo_public=demo_public,
             state_dir=state_dir,
         )
 
@@ -175,7 +222,7 @@ class Settings:
             missing: list[str] = []
             if not self.demo_endpoint:
                 missing.append("FREDO_DEMO_ENDPOINT")
-            if not self.demo_access_token:
+            if not self.demo_access_token and not self.demo_public:
                 missing.append("FREDO_DEMO_ACCESS_TOKEN")
             return missing
         if self.telephony_provider == "mock":
@@ -195,7 +242,8 @@ class Settings:
         """Return diagnostics without ever serializing credentials."""
         return {
             "telephony_provider": self.telephony_provider,
-            "demo_configured": bool(self.demo_endpoint and self.demo_access_token),
+            "demo_configured": bool(self.demo_endpoint and (self.demo_access_token or self.demo_public)),
+            "demo_public": self.demo_public,
             "deepgram_configured": bool(self.deepgram_api_key),
             "twilio_configured": bool(
                 self.twilio_account_sid

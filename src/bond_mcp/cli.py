@@ -20,7 +20,12 @@ def _parser() -> argparse.ArgumentParser:
     demo_sub = demo.add_subparsers(dest="demo_command", required=True)
     configure = demo_sub.add_parser("configure", help="Publish a relay URL and scoped demo token")
     configure.add_argument("--endpoint", required=True, help="Public HTTPS relay URL")
-    configure.add_argument("--token", required=True, help="Scoped public demo token")
+    configure.add_argument("--token", help="Scoped public demo token")
+    configure.add_argument(
+        "--public",
+        action="store_true",
+        help="Use the operator's explicit public allowlist-only demo mode",
+    )
     configure.add_argument("--force", action="store_true", help="Replace the existing profile")
     doctor = sub.add_parser("doctor", help="Check local readiness")
     doctor.add_argument("--json", action="store_true")
@@ -60,7 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         if parsed.scheme != "https" or not parsed.netloc:
             print("Demo relay endpoint must be a public HTTPS URL", file=sys.stderr)
             return 2
-        if len(args.token) < 16:
+        if not args.public and (not args.token or len(args.token) < 16):
             print("Demo token must be at least 16 characters", file=sys.stderr)
             return 2
         profile_path = Path.cwd() / "demo" / "profile.json"
@@ -72,7 +77,11 @@ def main(argv: list[str] | None = None) -> int:
         profile_path.parent.mkdir(parents=True, exist_ok=True)
         profile_path.write_text(
             json.dumps(
-                {"endpoint": args.endpoint.rstrip("/"), "access_token": args.token, "profile": "public-demo"},
+                {
+                    "endpoint": args.endpoint.rstrip("/"),
+                    **({"public": True} if args.public else {"access_token": args.token}),
+                    "profile": "public-demo",
+                },
                 indent=2,
             )
             + "\n",

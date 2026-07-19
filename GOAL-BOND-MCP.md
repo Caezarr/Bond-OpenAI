@@ -181,10 +181,11 @@ FREDO_ENDPOINT_SECRET
 No credential is committed, printed, placed in a task payload or embedded in a
 client configuration generated for Bond/Codex.
 
-The demo relay may expose a narrowly scoped public demo token in
-`demo/profile.json`; it is not a provider credential and is protected by relay
-allowlist, consent, rate and duration gates. Twilio and Deepgram credentials
-remain relay-only.
+For a short operator-controlled event, the relay may use the explicit public
+allowlist-only mode and publish only its HTTPS endpoint in `demo/profile.json`.
+The relay still enforces allowlist, consent, rate, duration and single-call
+gates. A private token-authenticated mode remains available. Twilio and
+Deepgram credentials remain relay-only.
 
 ### R8 — Documentation
 

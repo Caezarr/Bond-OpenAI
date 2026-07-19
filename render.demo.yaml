@@ -20,6 +20,8 @@ services:
         value: 180
       - key: FREDO_MAX_CONCURRENT_CALLS
         value: 1
+      - key: FREDO_DEMO_PUBLIC
+        value: 1
       - key: DEEPGRAM_API_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID
@@ -29,8 +31,6 @@ services:
       - key: TWILIO_PHONE_NUMBER
         sync: false
       - key: FREDO_ENDPOINT_SECRET
-        sync: false
-      - key: FREDO_DEMO_ACCESS_TOKEN
         sync: false
       - key: FREDO_ALLOWED_NUMBERS
         sync: false
