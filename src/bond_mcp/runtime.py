@@ -29,15 +29,17 @@ def create_runtime_app(settings, store: TaskStore) -> Starlette:
         return JSONResponse({"status": "ok", "service": "bond-openai-runtime"})
 
     async def status(request: Request) -> JSONResponse:
-        if settings.endpoint_secret:
-            supplied = request.headers.get("authorization", "")
-            if supplied != f"Bearer {settings.endpoint_secret}":
-                return JSONResponse({"error": "unauthorized"}, status_code=401)
         call_id = request.query_params.get("call_id", "")
         result = store.get(call_id)
         if result is None:
             return JSONResponse({"error": "unknown_call"}, status_code=404)
         form = await request.form()
+        supplied = request.headers.get("authorization", "")
+        signature = request.headers.get("x-twilio-signature", "")
+        local_auth = settings.endpoint_secret and supplied == f"Bearer {settings.endpoint_secret}"
+        twilio_auth = _valid_twilio_http(settings, request, form, signature)
+        if settings.endpoint_secret and not (local_auth or twilio_auth):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
         call_status = str(form.get("CallStatus", ""))
         mapped = {
             "queued": TaskState.DIALING,
@@ -124,6 +126,20 @@ def _valid_twilio_signature(settings, websocket: WebSocket, signature: str) -> b
         if query:
             url += "?" + query
         return RequestValidator(settings.twilio_auth_token).validate(url, {}, signature)
+    except Exception:
+        return False
+
+
+def _valid_twilio_http(settings, request: Request, form, signature: str) -> bool:
+    if not settings.twilio_auth_token or not signature:
+        return False
+    try:
+        from twilio.request_validator import RequestValidator
+
+        url = settings.public_url.rstrip("/") + "/twilio/status" if settings.public_url else str(request.url)
+        if request.url.query:
+            url += "?" + request.url.query
+        return RequestValidator(settings.twilio_auth_token).validate(url, dict(form), signature)
     except Exception:
         return False
 
