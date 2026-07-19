@@ -37,6 +37,10 @@ class TaskStore:
     def reserve(self, task: PhoneTask) -> tuple[str, PhoneResult, bool]:
         key = task.idempotency_key or f"task:{task.task_id}"
         with self._lock, sqlite3.connect(self.path) as db:
+            # Serialize the read/check/insert sequence across MCP processes as
+            # well as threads. Without an immediate transaction, two local
+            # clients could both observe an empty active set and dial twice.
+            db.execute("BEGIN IMMEDIATE")
             existing = db.execute(
                 "SELECT call_id, payload, result FROM phone_tasks WHERE idempotency_key = ?", (key,)
             ).fetchone()
