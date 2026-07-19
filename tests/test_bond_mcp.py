@@ -14,6 +14,7 @@ from bond_mcp.server import McpServer
 from bond_mcp.store import IdempotencyConflict, TaskStore
 from fredo.agent_config import build_agent_settings
 from fredo.settings import Settings
+from fredo.silence_monitor import SilenceMonitor
 
 
 def test_classifies_phone_tasks_without_dialing() -> None:
@@ -124,6 +125,34 @@ def test_demo_relay_requires_token_and_refreshes_status(tmp_path: Path) -> None:
         call_id = created.json()["call_id"]
         status = client.get(f"/v1/calls/{call_id}", headers=headers)
         assert status.json()["status"] == "completed"
+
+
+def test_silence_monitor_reprompts_then_hangs_up() -> None:
+    events: list[str] = []
+
+    async def inject(message: str) -> None:
+        events.append(message)
+
+    async def hangup() -> None:
+        events.append("hangup")
+
+    async def run() -> None:
+        monitor = SilenceMonitor(
+            inject_message=inject,
+            on_timeout=hangup,
+            language="en",
+            reprompt_seconds=0.01,
+            goodbye_seconds=0.01,
+        )
+        monitor.notify_agent_audio_done()
+        await asyncio.sleep(0.02)
+        assert events == ["Sorry, are you still there?"]
+        monitor.notify_agent_audio_done()
+        await asyncio.sleep(0.02)
+        monitor.stop()
+
+    asyncio.run(run())
+    assert events[-2:] == ["I can't hear anyone, so I'll try again another time. Goodbye.", "hangup"]
 
 
 def test_policy_requires_consent_and_exact_allowlist() -> None:
