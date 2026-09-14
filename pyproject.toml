@@ -18,7 +18,7 @@ dependencies = [
   "python-multipart==0.0.22",
   "starlette==0.52.1",
   "twilio==9.10.2",
-  "uvicorn[standard]==0.41.0",
+  "uvicorn[standard]==0.52.4",
 ]
 
 [project.optional-dependencies]
