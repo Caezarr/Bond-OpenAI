@@ -13,7 +13,7 @@ authors = [{ name = "Bond-OpenAI" }]
 dependencies = [
   "deepgram-sdk==7.8.1",
   "httpx==0.28.1",
-  "PyJWT[crypto]==2.13.0",
+  "PyJWT[crypto]==2.14.0",
   "python-dotenv==1.2.1",
   "python-multipart==0.0.32",
   "starlette==0.52.1",
