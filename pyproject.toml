@@ -16,7 +16,7 @@ dependencies = [
   "PyJWT[crypto]==2.14.0",
   "python-dotenv==1.2.3",
   "python-multipart==0.0.32",
-  "starlette==0.52.1",
+  "starlette==1.6.0",
   "twilio==9.11.1",
   "uvicorn[standard]==0.52.4",
 ]
