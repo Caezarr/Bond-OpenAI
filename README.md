@@ -68,6 +68,12 @@ See [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md) for the no-credential jury flow.
 
 Rejecting the preview means zero carrier call.
 
+## Support
+
+Need help with setup, configuration or MCP connections? See
+[SUPPORT.md](SUPPORT.md) for documentation links and how to ask questions
+safely.
+
 ## Project goals
 
 - [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) — software and MCP contract.
