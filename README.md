@@ -74,6 +74,8 @@ Need help with setup, configuration or MCP connections? See
 [SUPPORT.md](SUPPORT.md) for documentation links and how to ask questions
 safely.
 
+Bond-OpenAI is free software. Consider [sponsoring development on GitHub](https://github.com/sponsors/Caezarr).
+
 ## Project goals
 
 - [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) — software and MCP contract.
