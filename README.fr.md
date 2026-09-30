@@ -91,5 +91,34 @@ Les variables d'environnement sont documentées dans [.env.example](.env.example
 
 Rejeter l'aperçu signifie zéro appel opérateur.
 
-Voir [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) pour le contrat software et
-[GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) pour le site et la présentation.
+## Démo locale
+
+Le répertoire [demo/](demo/) contient les profils de configuration pour les tests locaux :
+
+- **profile.example.json** — modèle de configuration
+- **profile.json** — profil actif (pointer vers le relay démo ou configurer un runtime local)
+
+Pour la démonstration publique, les clés Twilio et Deepgram restent dans le
+relay opérateur. Une machine de jury n'a besoin d'aucune clé API si
+`demo/profile.json` pointe vers le relay. Voir [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md).
+
+## Support
+
+Besoin d'aide pour l'installation, la configuration ou les connexions MCP ? Voir
+[SUPPORT.md](SUPPORT.md) pour les liens de documentation et comment poser des
+questions en toute sécurité.
+
+Bond-OpenAI est un logiciel libre. Considérez [parrainer le développement sur GitHub](https://github.com/sponsors/Caezarr).
+
+## Objectifs du projet
+
+- [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) — logiciel et contrat MCP.
+- [GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) — site web, présentation et système visuel.
+- [GOAL-BOND-VOICE.md](GOAL-BOND-VOICE.md) — index des objectifs.
+
+## Limite du runtime actuel
+
+Le moteur téléphonique actuel utilise Twilio pour l'accès PSTN et Deepgram pour
+la reconnaissance vocale hébergée, le dialogue et la synthèse vocale. Le MCP
+lui-même s'exécute localement. Ce dépôt ne revendique pas d'inférence locale,
+d'enregistrement, de clonage vocal ou d'appels en masse non surveillés.
