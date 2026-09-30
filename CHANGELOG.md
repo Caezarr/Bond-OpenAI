@@ -11,6 +11,10 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 - Keep-a-Changelog skeleton for release notes.
 
+### Changed
+
+- Expanded French README (README.fr.md) to match English version coverage: product flow, MCP tools, environment variables, safety defaults, local demo, support, project goals, and runtime boundary sections.
+
 ## [0.1.0] — 2026-08
 
 ### Added
