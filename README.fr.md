@@ -77,5 +77,19 @@ Les variables d'environnement sont documentées dans [.env.example](.env.example
 - **FREDO_VOICE_MODEL** — modèle de synthèse vocale (par défaut aura-2-thalia-en)
 - **FREDO_TELEPHONY_PROVIDER** — fournisseur de téléphonie (vide pour auto-sélection du relay démo, `real` pour runtime opérateur local, `mock` pour tests)
 
+## Sécurité par défaut
+
+- un consentement explicite est requis ;
+- les destinations E.164 et la liste d'autorisation exacte de Fredo sont appliquées ;
+- seule une identité d'appelant vérifiée est utilisée ;
+- une confirmation humaine se produit avant la numérotation ;
+- un appel actif et un plafond de 180 secondes ;
+- l'enregistrement est désactivé ;
+- l'agent divulgue sa voix synthétique et l'absence d'enregistrement ;
+- les requêtes en double sont idempotentes ;
+- l'audio brut, les secrets et les numéros de téléphone complets ne figurent pas dans les journaux.
+
+Rejeter l'aperçu signifie zéro appel opérateur.
+
 Voir [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) pour le contrat software et
 [GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) pour le site et la présentation.
