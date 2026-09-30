@@ -60,5 +60,22 @@ est l'exécuteur téléphonique par défaut.
 Voir [docs/MCP.md](docs/MCP.md) pour la configuration client en deux clics.
 Voir [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md) pour le flux jury sans identifiants.
 
+## Variables d'environnement
+
+Les variables d'environnement sont documentées dans [.env.example](.env.example) :
+
+- **DEEPGRAM_API_KEY** — clé API Deepgram pour la reconnaissance vocale, le dialogue et la synthèse vocale
+- **TWILIO_ACCOUNT_SID**, **TWILIO_AUTH_TOKEN**, **TWILIO_PHONE_NUMBER** — identifiants Twilio pour l'accès PSTN
+- **FREDO_ALLOWED_NUMBERS** — destinations consenties exactes, séparées par des virgules, format E.164 canonique
+- **FREDO_ENDPOINT_SECRET** — secret de point de terminaison (générer avec `openssl rand -hex 24`)
+- **FREDO_PUBLIC_URL** — URL de rappel HTTPS publique pour les tests média Twilio réels
+- **FREDO_DEMO_ENDPOINT**, **FREDO_DEMO_ACCESS_TOKEN** — mode jury sans identifiants (valeurs publiées dans `demo/profile.json`)
+- **FREDO_HOST**, **FREDO_PORT** — hôte et port du serveur (par défaut 127.0.0.1:8080)
+- **FREDO_MAX_DURATION_SECONDS**, **FREDO_MAX_CONCURRENT_CALLS** — limites de sécurité strictes (max 180 secondes, 1 appel concurrent)
+- **FREDO_LISTEN_MODEL**, **FREDO_LISTEN_LANGUAGE**, **FREDO_EOT_THRESHOLD**, **FREDO_EOT_TIMEOUT_MS** — configuration de l'agent vocal
+- **FREDO_LLM_PROVIDER**, **FREDO_LLM_MODEL** — fournisseur et modèle LLM (par défaut open_ai, gpt-4o-mini)
+- **FREDO_VOICE_MODEL** — modèle de synthèse vocale (par défaut aura-2-thalia-en)
+- **FREDO_TELEPHONY_PROVIDER** — fournisseur de téléphonie (vide pour auto-sélection du relay démo, `real` pour runtime opérateur local, `mock` pour tests)
+
 Voir [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) pour le contrat software et
 [GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) pour le site et la présentation.
