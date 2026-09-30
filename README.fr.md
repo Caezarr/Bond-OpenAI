@@ -44,5 +44,21 @@ Pour la démonstration publique, les clés Twilio et Deepgram restent dans le
 relay opérateur. Une machine de jury n'a besoin d'aucune clé API si
 `demo/profile.json` pointe vers le relay. Voir [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md).
 
+## Outils MCP
+
+```text
+bond.classify_task(task_text, context)
+bond.create_phone_task(task_input, idempotency_key)
+bond.get_phone_task_status(call_id)
+bond.cancel_phone_task(call_id)
+```
+
+Le même contrat fonctionne depuis Bond, Codex, un agent IDE, ou n'importe quel
+client MCP. L'adaptateur est local et neutre vis-à-vis du fournisseur ; Fredo
+est l'exécuteur téléphonique par défaut.
+
+Voir [docs/MCP.md](docs/MCP.md) pour la configuration client en deux clics.
+Voir [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md) pour le flux jury sans identifiants.
+
 Voir [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) pour le contrat software et
 [GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) pour le site et la présentation.
