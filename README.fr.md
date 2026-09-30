@@ -40,10 +40,6 @@ fournisseur restent dans le relay opérateur et l'utilisateur n'a besoin que de
 la configuration publique `demo/profile.json`. Un fichier `.env` local n'est
 requis que lors de l'exécution directe du fournisseur.
 
-Pour la démonstration publique, les clés Twilio et Deepgram restent dans le
-relay opérateur. Une machine de jury n'a besoin d'aucune clé API si
-`demo/profile.json` pointe vers le relay. Voir [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md).
-
 ## Outils MCP
 
 ```text
