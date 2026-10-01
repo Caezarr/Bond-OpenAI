@@ -30,6 +30,7 @@ See [`.env.example`](.env.example) for a complete list of configuration keys.
 - **[docs/MCP.md](docs/MCP.md)** — MCP client setup for Bond, Codex and generic clients
 - **[docs/DEMO-RELAY.md](docs/DEMO-RELAY.md)** — zero-credential demo mode for jury machines
 - **[docs/TELEPHONY.md](docs/TELEPHONY.md)** — Twilio callback URLs and local runtime setup
+- **[docs/SMOKE.md](docs/SMOKE.md)** — local MCP + telephony smoke testing checklist
 - **[.env.example](.env.example)** — environment variables and provider configuration
 
 ### Security vulnerabilities
