@@ -53,6 +53,7 @@ adapter is local and provider-neutral; Fredo is the default phone executor.
 
 See [docs/MCP.md](docs/MCP.md) for the two-click client setup.
 See [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md) for the no-credential jury flow.
+See [docs/ENV.md](docs/ENV.md) for the complete environment variable reference.
 
 ## Safety by default
 

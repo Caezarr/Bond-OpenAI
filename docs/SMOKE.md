@@ -222,4 +222,5 @@ verification.
 - **[DEMO-RELAY.md](DEMO-RELAY.md)** — Zero-credential jury mode
 - **[TELEPHONY.md](TELEPHONY.md)** — Twilio callbacks and media bridge details
 - **[PROVIDER-FAILURE.md](PROVIDER-FAILURE.md)** — Provider error handling
-- **[../.env.example](../.env.example)** — Complete configuration reference
+- **[ENV.md](ENV.md)** — Complete environment variable matrix and usage modes
+- **[../.env.example](../.env.example)** — Example configuration template
