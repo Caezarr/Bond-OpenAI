@@ -89,3 +89,6 @@ The current phone engine uses Twilio for PSTN access and Deepgram for hosted
 speech recognition, dialogue and text-to-speech. The MCP itself runs locally.
 This repository does not claim local inference, recording, voice cloning or
 unattended bulk calling.
+
+See [docs/PROVIDER-MATRIX.md](docs/PROVIDER-MATRIX.md) for the complete
+provider matrix and current pinned dependency versions.
