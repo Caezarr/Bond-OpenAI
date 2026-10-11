@@ -1,0 +1,53 @@
+# Bond-OpenAI
+
+## What it is
+
+Bond-OpenAI is a local, provider-neutral MCP server that gives software agents safe telephone action capabilities. Clone the repository, bootstrap once, connect the MCP, and let Bond, Codex, or other MCP-compatible agents complete consented phone tasks.
+
+The MCP runs locally and provides classify, create, status check, and cancel tools. Fredo is the default telephony executor (using Twilio for PSTN and Deepgram for hosted speech processing).
+
+## Stack
+
+- Python with uv for dependency management
+- MCP (Model Context Protocol) server implementation
+- Twilio (PSTN access, verified caller)
+- Deepgram (hosted speech recognition, dialogue, TTS)
+
+## Key directories
+
+- `src/bond_mcp/` — MCP server, CLI, models, policy, providers
+- `src/fredo/` — telephony runtime, voice agent, security
+- `docs/` — setup guides (MCP.md, TELEPHONY.md, DEMO-RELAY.md, ENV.md, SMOKE.md)
+- `codex-plugin/` — Codex plugin with fredo-call skill
+- `demo/` — zero-credential demo profile for testing
+- `scripts/` — bootstrap and setup utilities
+
+## How to run
+
+```bash
+git clone https://github.com/Caezarr/Bond-OpenAI.git
+cd Bond-OpenAI
+./scripts/bootstrap.sh
+uv run bond-mcp doctor
+uv run bond-mcp serve
+```
+
+First run installs pinned dependencies and local tools. Provider credentials stay in an ignored `.env` for local mode or use `demo/profile.json` for zero-credential demo relay.
+
+## Safety by default
+
+- Explicit consent required
+- E.164 destinations and exact allowlisting enforced
+- Only verified caller identity used
+- Human confirmation before dialing
+- One active call, 180-second hard cap
+- Recording disabled
+- No credentials, raw audio, transcripts, or full phone numbers in logs
+
+## Documentation
+
+- [README.md](README.md) — quick start, MCP tools, project goals
+- [AGENTS.md](AGENTS.md) — product boundary, safety constraints, workflow
+- [SECURITY.md](SECURITY.md) — security boundary and disclosure policy
+- [SUPPORT.md](SUPPORT.md) — setup help, troubleshooting, documentation references
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guidelines, verification workflow
