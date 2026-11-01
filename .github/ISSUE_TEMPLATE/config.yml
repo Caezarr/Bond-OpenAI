@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Caezarr/Bond-OpenAI/security/advisories/new
+    about: Please report security issues privately, not in a public issue (see SECURITY.md).
+  - name: Questions and support
+    url: https://github.com/Caezarr/Bond-OpenAI/blob/main/SUPPORT.md
+    about: Usage questions and help — read SUPPORT.md before opening an issue.
