@@ -17,11 +17,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 from .models import TERMINAL_STATES, PhoneResult, PhoneTask, TaskState
 from .policy import Policy, PolicyError
-from .providers import PhoneProvider
 from .store import ActiveCall, IdempotencyConflict, TaskStore
 
 # Status values sent by Twilio status callbacks.
@@ -46,6 +45,16 @@ PROVIDER_STATES: Mapping[str, TaskState] = {
     "no_answer": TaskState.NO_ANSWER,
     "cancelled": TaskState.CANCELLED,
 }
+
+
+class PhoneProvider(Protocol):
+    """Port implemented by every carrier adapter (see ``providers.py``)."""
+
+    async def create_call(self, task: PhoneTask, call_id: str) -> str: ...
+
+    async def get_status(self, provider_call_id: str) -> str: ...
+
+    async def cancel_call(self, provider_call_id: str) -> None: ...
 
 
 class ProviderFailed(RuntimeError):

@@ -7,7 +7,6 @@ forwards confirmed tasks to the operator-hosted relay with a scoped token.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol
 
 import httpx
 
@@ -15,15 +14,10 @@ from fredo.models import CallRequest
 from fredo.settings import Settings
 from fredo.telephony import Telephony, telephony_from_settings
 
+from .lifecycle import PhoneProvider
 from .models import PhoneTask
 
-
-class PhoneProvider(Protocol):
-    async def create_call(self, task: PhoneTask, call_id: str) -> str: ...
-
-    async def get_status(self, provider_call_id: str) -> str: ...
-
-    async def cancel_call(self, provider_call_id: str) -> None: ...
+__all__ = ["DemoProvider", "FredoProvider", "PhoneProvider", "provider_from_settings"]
 
 
 @dataclass(slots=True)

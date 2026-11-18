@@ -113,3 +113,18 @@ async def test_cancel_hangs_up_active_call_once(
 def test_every_mapped_provider_state_is_a_task_state() -> None:
     assert set(PROVIDER_STATES.values()) <= set(TaskState)
     assert TERMINAL_STATES <= set(TaskState)
+
+
+def test_core_imports_no_transport_or_vendor_sdk() -> None:
+    import subprocess
+    import sys
+
+    probe = (
+        "import sys, bond_mcp.lifecycle; "
+        "vendors = {'httpx', 'twilio', 'deepgram', 'starlette', 'uvicorn', 'fredo'}; "
+        "print(sorted(m for m in sys.modules if m.split('.')[0] in vendors))"
+    )
+    output = subprocess.run(
+        [sys.executable, "-c", probe], check=True, capture_output=True, text=True
+    ).stdout
+    assert output.strip() == "[]"
