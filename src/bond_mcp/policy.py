@@ -40,7 +40,11 @@ def build_task(payload: Any, policy: Policy) -> PhoneTask:
     if not isinstance(payload, dict):
         raise PolicyError("invalid_task", "task_input must be an object")
     required = ("task_id", "caller_identity", "destination_phone", "call_goal")
-    missing = [name for name in required if not isinstance(payload.get(name), str) or not payload[name].strip()]
+    missing = [
+        name
+        for name in required
+        if not isinstance(payload.get(name), str) or not payload[name].strip()
+    ]
     if missing:
         raise PolicyError("needs_input", f"Missing required fields: {', '.join(missing)}")
     destination = normalize_phone(payload["destination_phone"])
@@ -72,8 +76,16 @@ def classify(text: str, context: dict[str, Any] | None = None) -> str:
     text = text.strip()
     lowered = text.lower()
     phone_words = (
-        "call", "phone", "ring", "telephone", "appelle", "appeler",
-        "téléphone", "réserve", "reservation", "réservation",
+        "call",
+        "phone",
+        "ring",
+        "telephone",
+        "appelle",
+        "appeler",
+        "téléphone",
+        "réserve",
+        "reservation",
+        "réservation",
     )
     if not any(word in lowered for word in phone_words):
         return "not_phone_call"

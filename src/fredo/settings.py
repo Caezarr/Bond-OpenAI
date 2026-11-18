@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
 import json
-from dataclasses import dataclass, field, replace
+import os
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping
 
 from dotenv import load_dotenv
 
@@ -83,7 +83,7 @@ class Settings:
     state_dir: Path = Path(".local-state")
 
     @classmethod
-    def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
+    def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
         if environ is None:
             load_dotenv()
             env: Mapping[str, str] = os.environ
@@ -99,12 +99,12 @@ class Settings:
             raise ValueError("The hackathon profile requires FREDO_MAX_CONCURRENT_CALLS=1")
 
         profile = _demo_profile()
-        demo_endpoint = (
-            env.get("FREDO_DEMO_ENDPOINT")
-            or profile.get("endpoint")
-            or ""
-        ).rstrip("/") or None
-        demo_access_token = env.get("FREDO_DEMO_ACCESS_TOKEN") or profile.get("access_token") or None
+        demo_endpoint = (env.get("FREDO_DEMO_ENDPOINT") or profile.get("endpoint") or "").rstrip(
+            "/"
+        ) or None
+        demo_access_token = (
+            env.get("FREDO_DEMO_ACCESS_TOKEN") or profile.get("access_token") or None
+        )
         provider = env.get("FREDO_TELEPHONY_PROVIDER", "").strip().lower()
         if not provider:
             # A configured demo relay is the zero-credential default. Local
@@ -167,9 +167,6 @@ class Settings:
             state_dir=state_dir,
         )
 
-    def with_public_url(self, public_url: str) -> "Settings":
-        return replace(self, public_url=public_url.rstrip("/"))
-
     def missing_for_real_call(self) -> list[str]:
         if self.telephony_provider == "demo":
             missing: list[str] = []
@@ -198,9 +195,7 @@ class Settings:
             "demo_configured": bool(self.demo_endpoint and self.demo_access_token),
             "deepgram_configured": bool(self.deepgram_api_key),
             "twilio_configured": bool(
-                self.twilio_account_sid
-                and self.twilio_auth_token
-                and self.twilio_phone_number
+                self.twilio_account_sid and self.twilio_auth_token and self.twilio_phone_number
             ),
             "endpoint_auth_configured": bool(self.endpoint_secret),
             "allowed_destination_count": len(self.allowed_numbers),

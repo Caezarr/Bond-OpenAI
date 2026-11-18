@@ -147,9 +147,7 @@ class VoiceAgentSession:
     async def _inject_agent_message(self, message: str) -> None:
         from deepgram.agent.v1 import AgentV1InjectAgentMessage
 
-        await self._connection.send_inject_agent_message(
-            AgentV1InjectAgentMessage(message=message)
-        )
+        await self._connection.send_inject_agent_message(AgentV1InjectAgentMessage(message=message))
 
     async def _silence_hangup(self) -> None:
         if self._silence is not None:
@@ -201,7 +199,10 @@ class VoiceAgentSession:
                 continue
 
             try:
-                parsed = parse_obj_as(V1SocketClientResponse, json.loads(raw_message))
+                parsed: Any = parse_obj_as(
+                    V1SocketClientResponse,  # type: ignore[arg-type]
+                    json.loads(raw_message),
+                )
             except Exception:
                 logger.debug("Ignoring an unsupported Deepgram event")
                 continue
@@ -228,9 +229,7 @@ class VoiceAgentSession:
                     and asyncio.get_running_loop().time() < self._disclosure_deadline
                 )
                 if not protected:
-                    await self.twilio_ws.send_json(
-                        {"event": "clear", "streamSid": self.stream_sid}
-                    )
+                    await self.twilio_ws.send_json({"event": "clear", "streamSid": self.stream_sid})
             elif isinstance(parsed, AgentV1FunctionCallRequest):
                 await self._handle_function_call(parsed)
             elif isinstance(parsed, AgentV1AgentAudioDone):
@@ -287,9 +286,7 @@ class VoiceAgentSession:
                     )
                 )
 
-    async def _hangup_after_playback(
-        self, *, audio_was_done_before_function: bool
-    ) -> None:
+    async def _hangup_after_playback(self, *, audio_was_done_before_function: bool) -> None:
         try:
             if audio_was_done_before_function:
                 try:

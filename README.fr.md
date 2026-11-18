@@ -21,7 +21,7 @@ et réserver une table » en une vraie conversation consentie.
 Tâche Bond / prompt Codex
         ↓
 MCP local Bond-OpenAI
-  classifier → clarifier → prévisualiser → appeler
+  classifier → clarifier → prévisualiser → confirmation explicite → appeler
         ↓
 Runtime téléphonique Fredo
   Appelant vérifié Twilio + agent vocal Deepgram
@@ -50,19 +50,18 @@ requis que lors de l'exécution directe du fournisseur.
 
 ## Outils MCP
 
-```text
-bond.classify_task(task_text, context)
-bond.create_phone_task(task_input, idempotency_key)
-bond.get_phone_task_status(call_id)
-bond.cancel_phone_task(call_id)
-```
+| Outil | Rôle |
+| --- | --- |
+| `bond.classify_task(task_text, context)` | Indique si une tâche nécessite un appel (`phone_call`, `needs_input`, `not_phone_call`). Ne compose jamais. |
+| `bond.create_phone_task(task_input, idempotency_key)` | Sans `confirmed: true`, renvoie un aperçu et ne compose rien. Avec, passe exactement un appel par clé d'idempotence. |
+| `bond.get_phone_task_status(call_id)` | Renvoie le résultat structuré : statut, issue, résumé. |
+| `bond.cancel_phone_task(call_id)` | Raccroche un appel actif. |
 
-Le même contrat fonctionne depuis Bond, Codex, un agent IDE, ou n'importe quel
-client MCP. L'adaptateur est local et neutre vis-à-vis du fournisseur ; Fredo
-est l'exécuteur téléphonique par défaut.
-
-Voir [docs/MCP.md](docs/MCP.md) pour la configuration client en deux clics.
-Voir [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md) pour le flux jury sans identifiants.
+Le même contrat fonctionne depuis Bond, Codex, un agent IDE ou n'importe quel
+client MCP. Les formats d'entrée et de résultat sont dans [schemas/](schemas/) ;
+la configuration client est dans [docs/MCP.md](docs/MCP.md), le flux jury sans
+identifiants dans [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md), et toutes les
+variables d'environnement dans [docs/ENV.md](docs/ENV.md).
 
 ## Variables d'environnement
 
@@ -83,17 +82,43 @@ Les variables d'environnement sont documentées dans [.env.example](.env.example
 
 ## Sécurité par défaut
 
-- un consentement explicite est requis ;
-- les destinations E.164 et la liste d'autorisation exacte de Fredo sont appliquées ;
-- seule une identité d'appelant vérifiée est utilisée ;
-- une confirmation humaine se produit avant la numérotation ;
-- un appel actif et un plafond de 180 secondes ;
-- l'enregistrement est désactivé ;
-- l'agent divulgue sa voix synthétique et l'absence d'enregistrement ;
-- les requêtes en double sont idempotentes ;
-- l'audio brut, les secrets et les numéros de téléphone complets ne figurent pas dans les journaux.
+- un consentement explicite du destinataire est requis ;
+- les destinations doivent être des numéros E.164 canoniques présents dans une liste d'autorisation exacte ;
+- seul l'identifiant d'appelant vérifié de l'opérateur est utilisé ;
+- un humain confirme l'aperçu avant la numérotation ; le rejeter signifie zéro appel opérateur ;
+- un seul appel actif, plafonné à 180 secondes à la fois par Twilio et par le runtime ;
+- l'enregistrement est désactivé, et l'agent annonce qu'il est une voix synthétique et n'enregistre pas ;
+- la création exige une clé d'idempotence ; une tentative échouée n'est jamais recomposée automatiquement ;
+- les rappels Twilio sont vérifiés par signature ;
+- l'audio brut, les secrets et les numéros complets ne figurent ni dans les journaux ni dans les résultats.
 
-Rejeter l'aperçu signifie zéro appel opérateur.
+L'endroit du code où chaque règle est appliquée, et les tests hors ligne qui les verrouillent,
+sont listés dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#safety-invariants) (en anglais).
+
+## Architecture
+
+```text
+src/bond_mcp/server.py      adaptateur MCP (JSON-RPC sur stdio)
+src/bond_mcp/lifecycle.py   cœur neutre : aperçu, appel, statut, annulation
+src/bond_mcp/policy.py      consentement, E.164, liste d'autorisation, classification
+src/bond_mcp/store.py       SQLite : idempotence + un seul appel actif
+src/bond_mcp/providers.py   Fredo (Twilio + Deepgram en local) ou relay démo
+src/fredo/                  runtime opérateur : téléphonie, agent vocal, gestion des silences
+```
+
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) se lit en cinq minutes :
+composants, machine à états d'un appel, frontières de confiance et invariants
+de sécurité.
+
+## Développement
+
+```bash
+uv sync --frozen --extra dev
+uv run ruff check src tests && uv run ruff format --check src tests
+uv run mypy
+uv run pytest        # hors ligne : opérateur simulé, aucun réseau
+uv build
+```
 
 ## Démo locale
 

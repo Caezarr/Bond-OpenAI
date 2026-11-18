@@ -15,7 +15,7 @@ The MCP runs locally and provides classify, create, status check, and cancel too
 
 ## Key directories
 
-- `src/bond_mcp/` — MCP server, CLI, models, policy, providers
+- `src/bond_mcp/` — MCP adapter (server), provider-neutral core (lifecycle, policy, store, models), providers, carrier runtime, CLI
 - `src/fredo/` — telephony runtime, voice agent, security
 - `docs/` — setup guides (MCP.md, TELEPHONY.md, DEMO-RELAY.md, ENV.md, SMOKE.md)
 - `codex-plugin/` — Codex plugin with fredo-call skill
@@ -47,6 +47,7 @@ First run installs pinned dependencies and local tools. Provider credentials sta
 ## Documentation
 
 - [README.md](README.md) — quick start, MCP tools, project goals
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — components, call lifecycle, trust boundaries, safety invariants
 - [AGENTS.md](AGENTS.md) — product boundary, safety constraints, workflow
 - [SECURITY.md](SECURITY.md) — security boundary and disclosure policy
 - [SUPPORT.md](SUPPORT.md) — setup help, troubleshooting, documentation references

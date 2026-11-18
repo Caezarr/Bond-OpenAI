@@ -1,23 +1,23 @@
+"""Phone providers: the seam between the provider-neutral core and a carrier.
+
+``FredoProvider`` drives the local Twilio + Deepgram runtime; ``DemoProvider``
+forwards confirmed tasks to the operator-hosted relay with a scoped token.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from types import SimpleNamespace
-from typing import Protocol
 
 import httpx
 
+from fredo.models import CallRequest
 from fredo.settings import Settings
 from fredo.telephony import Telephony, telephony_from_settings
 
+from .lifecycle import PhoneProvider
 from .models import PhoneTask
 
-
-class PhoneProvider(Protocol):
-    async def create_call(self, task: PhoneTask, call_id: str) -> str: ...
-
-    async def get_status(self, provider_call_id: str) -> str: ...
-
-    async def cancel_call(self, provider_call_id: str) -> None: ...
+__all__ = ["DemoProvider", "FredoProvider", "PhoneProvider", "provider_from_settings"]
 
 
 @dataclass(slots=True)
@@ -26,13 +26,13 @@ class FredoProvider:
     telephony: Telephony
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> "FredoProvider":
+    def from_settings(cls, settings: Settings) -> FredoProvider:
         return cls(settings=settings, telephony=telephony_from_settings(settings))
 
     async def create_call(self, task: PhoneTask, call_id: str) -> str:
-        # The existing media bridge reads only `to` and `intent`; the MCP keeps
+        # The carrier transport receives only `to` and `intent`; the MCP keeps
         # its own provider-neutral task contract at this boundary.
-        request = SimpleNamespace(to=task.destination_phone, intent=task.call_goal)
+        request = CallRequest(to=task.destination_phone, intent=task.call_goal)
         return await self.telephony.place_call(request, call_id)
 
     async def get_status(self, provider_call_id: str) -> str:
@@ -64,7 +64,9 @@ class DemoProvider:
     async def create_call(self, task: PhoneTask, call_id: str) -> str:
         body = {"task": task.as_dict(), "client_call_id": call_id}
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self.transport) as client:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds, transport=self.transport
+            ) as client:
                 response = await client.post(
                     f"{self.endpoint.rstrip('/')}/v1/calls",
                     headers=self._headers(),
@@ -81,7 +83,9 @@ class DemoProvider:
 
     async def get_status(self, provider_call_id: str) -> str:
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self.transport) as client:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds, transport=self.transport
+            ) as client:
                 response = await client.get(
                     f"{self.endpoint.rstrip('/')}/v1/calls/{provider_call_id}",
                     headers=self._headers(),
@@ -97,7 +101,9 @@ class DemoProvider:
 
     async def cancel_call(self, provider_call_id: str) -> None:
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self.transport) as client:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds, transport=self.transport
+            ) as client:
                 response = await client.post(
                     f"{self.endpoint.rstrip('/')}/v1/calls/{provider_call_id}/cancel",
                     headers=self._headers(),

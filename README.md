@@ -20,7 +20,7 @@ into a real consented conversation.
 Bond task / Codex prompt
         ↓
 Local Bond-OpenAI MCP
-  classify → clarify → preview → call
+  classify → clarify → preview → explicit confirmation → call
         ↓
 Fredo phone runtime
   Twilio verified caller + Deepgram voice agent
@@ -48,33 +48,57 @@ is required only when running the provider directly.
 
 ## MCP tools
 
-```text
-bond.classify_task(task_text, context)
-bond.create_phone_task(task_input, idempotency_key)
-bond.get_phone_task_status(call_id)
-bond.cancel_phone_task(call_id)
-```
+| Tool | What it does |
+| --- | --- |
+| `bond.classify_task(task_text, context)` | Says whether a task needs a call (`phone_call`, `needs_input`, `not_phone_call`). Never dials. |
+| `bond.create_phone_task(task_input, idempotency_key)` | Without `confirmed: true`, returns a preview and dials nothing. With it, places exactly one call per idempotency key. |
+| `bond.get_phone_task_status(call_id)` | Returns the structured result: status, outcome, summary. |
+| `bond.cancel_phone_task(call_id)` | Hangs up an active call. |
 
-The same contract works from Bond, Codex, an IDE agent, or any MCP client. The
-adapter is local and provider-neutral; Fredo is the default phone executor.
-
-See [docs/MCP.md](docs/MCP.md) for the two-click client setup.
-See [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md) for the no-credential jury flow.
-See [docs/ENV.md](docs/ENV.md) for the complete environment variable reference.
+The same contract works from Bond, Codex, an IDE agent, or any MCP client.
+Input and result shapes are in [schemas/](schemas/); client setup is in
+[docs/MCP.md](docs/MCP.md), the no-credential jury flow in
+[docs/DEMO-RELAY.md](docs/DEMO-RELAY.md), and every environment variable in
+[docs/ENV.md](docs/ENV.md).
 
 ## Safety by default
 
-- explicit consent is required;
-- E.164 destinations and Fredo's exact allowlist are enforced;
-- only a verified caller identity is used;
-- a human confirmation happens before dialing;
-- one active call and a 180-second cap;
-- recording is disabled;
-- the agent discloses its synthetic voice and no recording;
-- duplicate requests are idempotent;
-- raw audio, secrets and full phone numbers stay out of logs.
+- explicit recipient consent is required;
+- destinations must be canonical E.164 numbers on an exact allowlist;
+- only the operator's verified caller ID is used;
+- a human confirms the preview before dialing; rejecting it means zero carrier calls;
+- one active call at a time, hard-capped at 180 seconds by both Twilio and the runtime;
+- recording is disabled, and the agent discloses that it is a synthetic voice and not recording;
+- creation requires an idempotency key; a failed attempt is never redialed automatically;
+- Twilio callbacks are signature-checked;
+- raw audio, secrets and full phone numbers stay out of logs and results.
 
-Rejecting the preview means zero carrier call.
+Where each rule is enforced in code, and the offline tests that pin them, are listed in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#safety-invariants).
+
+## Architecture
+
+```text
+src/bond_mcp/server.py      MCP adapter (JSON-RPC over stdio)
+src/bond_mcp/lifecycle.py   provider-neutral core: preview, dial, status, cancel
+src/bond_mcp/policy.py      consent, E.164, allowlist, classification
+src/bond_mcp/store.py       SQLite idempotency + one-active-call guard
+src/bond_mcp/providers.py   Fredo (local Twilio + Deepgram) or demo relay
+src/fredo/                  carrier runtime: telephony, voice agent, silence handling
+```
+
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) is a five-minute read covering
+components, the call state machine, trust boundaries and safety invariants.
+
+## Development
+
+```bash
+uv sync --frozen --extra dev
+uv run ruff check src tests && uv run ruff format --check src tests
+uv run mypy
+uv run pytest        # offline: fake carrier, no network
+uv build
+```
 
 ## Support
 

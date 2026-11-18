@@ -1,6 +1,7 @@
 # AGENTS.md
 
-Read [GOAL.md](docs/goals/GOAL.md), then the relevant Bond goal. This repository builds a
+Read [GOAL.md](docs/goals/GOAL.md), then the relevant Bond goal. Module boundaries
+and safety enforcement points are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). This repository builds a
 local, generic MCP phone action distributed by cloning the repository.
 
 ## Product boundary
@@ -31,6 +32,7 @@ Never describe hosted speech processing as local inference.
 1. Keep one local vertical path working.
 2. Keep the MCP transport-neutral and provider-adapter based.
 3. Add offline positive, negative, replay, policy and redaction tests.
-4. Run `uv sync --frozen --extra dev`, lint, tests, build and `git diff --check`.
+4. Run `uv sync --frozen --extra dev`, lint, format check, mypy, tests, build and
+   `git diff --check`.
 
 Separate implemented, offline-tested, live-qualified and planned behavior.

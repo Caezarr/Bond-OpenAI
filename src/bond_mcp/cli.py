@@ -28,7 +28,9 @@ def _parser() -> argparse.ArgumentParser:
     install.add_argument("--client", choices=("codex", "bond", "generic"), required=True)
     install.add_argument("--print", action="store_true", dest="print_only")
     install.add_argument("--write", type=Path, help="Write a config file at this explicit path")
-    install.add_argument("--force", action="store_true", help="Allow replacing the explicit --write path")
+    install.add_argument(
+        "--force", action="store_true", help="Allow replacing the explicit --write path"
+    )
     return parser
 
 
@@ -67,12 +69,18 @@ def main(argv: list[str] | None = None) -> int:
         if profile_path.exists() and not args.force:
             current = json.loads(profile_path.read_text(encoding="utf-8"))
             if current.get("endpoint") or current.get("access_token"):
-                print(f"Refusing to overwrite existing demo profile: {profile_path}", file=sys.stderr)
+                print(
+                    f"Refusing to overwrite existing demo profile: {profile_path}", file=sys.stderr
+                )
                 return 2
         profile_path.parent.mkdir(parents=True, exist_ok=True)
         profile_path.write_text(
             json.dumps(
-                {"endpoint": args.endpoint.rstrip("/"), "access_token": args.token, "profile": "public-demo"},
+                {
+                    "endpoint": args.endpoint.rstrip("/"),
+                    "access_token": args.token,
+                    "profile": "public-demo",
+                },
                 indent=2,
             )
             + "\n",
@@ -101,7 +109,11 @@ def main(argv: list[str] | None = None) -> int:
     summary = settings.public_summary()
     summary["mcp"] = "ready"
     summary["missing"] = settings.missing_for_real_call()
-    print(json.dumps(summary, indent=2) if args.json else "bond-mcp: " + ("ready" if not summary["missing"] else "configuration incomplete"))
+    print(
+        json.dumps(summary, indent=2)
+        if args.json
+        else "bond-mcp: " + ("ready" if not summary["missing"] else "configuration incomplete")
+    )
     return 0 if not summary["missing"] else 1
 
 

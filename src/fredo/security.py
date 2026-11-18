@@ -13,6 +13,6 @@ def validate_twilio_signature(
     try:
         from twilio.request_validator import RequestValidator
 
-        return RequestValidator(auth_token).validate(url, dict(params), signature)
+        return bool(RequestValidator(auth_token).validate(url, dict(params), signature))
     except Exception:
         return False
