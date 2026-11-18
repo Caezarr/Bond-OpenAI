@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Read [GOAL.md](GOAL.md), then the relevant Bond goal. This repository builds a
+Read [GOAL.md](docs/goals/GOAL.md), then the relevant Bond goal. This repository builds a
 local, generic MCP phone action distributed by cloning the repository.
 
 ## Product boundary

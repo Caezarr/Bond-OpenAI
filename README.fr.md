@@ -108,9 +108,9 @@ Bond-OpenAI est un logiciel libre. Considérez [parrainer le développement sur 
 
 ## Objectifs du projet
 
-- [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) — logiciel et contrat MCP.
-- [GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) — site web, présentation et système visuel.
-- [GOAL-BOND-VOICE.md](GOAL-BOND-VOICE.md) — index des objectifs.
+- [GOAL-BOND-MCP.md](docs/goals/GOAL-BOND-MCP.md) — logiciel et contrat MCP.
+- [GOAL-BOND-DESIGN.md](docs/goals/GOAL-BOND-DESIGN.md) — site web, présentation et système visuel.
+- [GOAL-BOND-VOICE.md](docs/goals/GOAL-BOND-VOICE.md) — index des objectifs.
 
 ## Limite du runtime actuel
 

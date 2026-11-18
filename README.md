@@ -79,9 +79,9 @@ Bond-OpenAI is free software. Consider [sponsoring development on GitHub](https:
 
 ## Project goals
 
-- [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) — software and MCP contract.
-- [GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) — website, deck and visual system.
-- [GOAL-BOND-VOICE.md](GOAL-BOND-VOICE.md) — goal index.
+- [GOAL-BOND-MCP.md](docs/goals/GOAL-BOND-MCP.md) — software and MCP contract.
+- [GOAL-BOND-DESIGN.md](docs/goals/GOAL-BOND-DESIGN.md) — website, deck and visual system.
+- [GOAL-BOND-VOICE.md](docs/goals/GOAL-BOND-VOICE.md) — goal index.
 
 ## Current runtime boundary
 

@@ -168,6 +168,46 @@ wheels = [
 ]
 
 [[package]]
+name = "bond-openai-mcp"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "deepgram-sdk" },
+    { name = "httpx" },
+    { name = "pyjwt", extra = ["crypto"] },
+    { name = "python-dotenv" },
+    { name = "python-multipart" },
+    { name = "starlette" },
+    { name = "twilio" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "jsonschema" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "deepgram-sdk", specifier = "==7.19.0" },
+    { name = "httpx", specifier = "==0.28.1" },
+    { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.25,<5" },
+    { name = "pyjwt", extras = ["crypto"], specifier = "==2.15.1" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4,<10" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.25,<2" },
+    { name = "python-dotenv", specifier = "==1.2.4" },
+    { name = "python-multipart", specifier = "==0.0.33" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12,<1" },
+    { name = "starlette", specifier = "==1.10.0" },
+    { name = "twilio", specifier = "==9.13.0" },
+    { name = "uvicorn", extras = ["standard"], specifier = "==0.54.0" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "certifi"
 version = "2026.6.17"
 source = { registry = "https://pypi.org/simple" }
@@ -371,7 +411,7 @@ wheels = [
 
 [[package]]
 name = "deepgram-sdk"
-version = "6.0.0"
+version = "7.19.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -380,50 +420,10 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/7e/1673b5e975fa7c888d30e54f906b45772270185dea3e58fdcdaab87c8ff3/deepgram_sdk-6.0.0.tar.gz", hash = "sha256:297d00dced558f15b4bdd50d6f6f114ccf2693f200eefd5a5ae97856c958f470", size = 173397, upload-time = "2026-02-23T09:04:00.8Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/24/2a/657f471495766961fc89f1c4dce94c0c0065272d7c65037e0a8e69cd59a5/deepgram_sdk-7.19.0.tar.gz", hash = "sha256:e92416b33abcfb7146be7d894e7d8f9b4e8ad8dbbc2ddb4fc65989eff0be401a", size = 266185, upload-time = "2026-11-13T09:44:38.593Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/3b/d565437cafd62c70db58e1a72c3be16586cf035c2c6b0875bb378e37c3aa/deepgram_sdk-6.0.0-py3-none-any.whl", hash = "sha256:5810d0e2a7b4f790b413cbfe5f82f9c37d3fdf6a80998290bc32bbe8b99534aa", size = 484365, upload-time = "2026-02-23T09:03:59.309Z" },
+    { url = "https://files.pythonhosted.org/packages/00/02/99e5fd5d8d4cb3cd8afcdd0e25ede7857770eecdd0b9a648ddd3e1eac090/deepgram_sdk-7.19.0-py3-none-any.whl", hash = "sha256:dcd4a80add10193c7b5f3b4a1fd54c449aa5e4b8e1429c7c6afcd1f116a1508d", size = 688393, upload-time = "2026-11-13T09:44:36.65Z" },
 ]
-
-[[package]]
-name = "bond-openai-mcp"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "deepgram-sdk" },
-    { name = "httpx" },
-    { name = "pyjwt", extra = ["crypto"] },
-    { name = "python-dotenv" },
-    { name = "python-multipart" },
-    { name = "starlette" },
-    { name = "twilio" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "jsonschema" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "deepgram-sdk", specifier = "==6.0.0" },
-    { name = "httpx", specifier = "==0.28.1" },
-    { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.25,<5" },
-    { name = "pyjwt", extras = ["crypto"], specifier = "==2.13.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4,<10" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.25,<2" },
-    { name = "python-dotenv", specifier = "==1.2.1" },
-    { name = "python-multipart", specifier = "==0.0.22" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12,<1" },
-    { name = "starlette", specifier = "==0.52.1" },
-    { name = "twilio", specifier = "==9.10.2" },
-    { name = "uvicorn", extras = ["standard"], specifier = "==0.41.0" },
-]
-provides-extras = ["dev"]
 
 [[package]]
 name = "frozenlist"
@@ -953,11 +953,11 @@ wheels = [
 
 [[package]]
 name = "pyjwt"
-version = "2.13.0"
+version = "2.15.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3b/81/58d0ac84e1ef3a3843791d6954d94c0b33d526c75eeb1efbce9d0a4c4077/pyjwt-2.13.0.tar.gz", hash = "sha256:41571c89ca91598c79e8ef18a2d07367d4810fbbd6f637794879baf1b7703423", size = 107515, upload-time = "2026-05-21T19:54:36.618Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/ea/5194e52748b0da83d71e082d75496eaec6e58f419f5e184786ded517e6a9/pyjwt-2.15.1.tar.gz", hash = "sha256:4f259e80cdfb6b3fc18a7de51fd1ef9ec79652f25019bae68975ca2468a34df8", size = 121252, upload-time = "2026-09-28T18:40:42.598Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/5e/ecf12fdb62546d64385c158514e9b2b671f7832108ef2ecd2020ce0af2d1/pyjwt-2.13.0-py3-none-any.whl", hash = "sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728", size = 31274, upload-time = "2026-05-21T19:54:35.362Z" },
+    { url = "https://files.pythonhosted.org/packages/50/ca/44de4e75f8aadc457f0634be3b542815078ded46dca30efb960edeecad6e/pyjwt-2.15.1-py3-none-any.whl", hash = "sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193", size = 33860, upload-time = "2026-09-28T18:40:41.429Z" },
 ]
 
 [package.optional-dependencies]
@@ -996,20 +996,20 @@ wheels = [
 
 [[package]]
 name = "python-dotenv"
-version = "1.2.1"
+version = "1.2.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/26/2fbeedb218a787a5eea551c7532cac4e009f83d689dd2faa0d0353473f86/python_dotenv-1.2.4.tar.gz", hash = "sha256:f0d53e69935a851c0dcc78f3ab7aaccd8cabef0b92382b576b824212902873c0", size = 60824, upload-time = "2026-10-01T05:36:10Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/1b/a298b06749107c305e1fe0f814c6c74aea7b2f1e10989cb30f544a1b3253/python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61", size = 21230, upload-time = "2025-10-26T15:12:09.109Z" },
+    { url = "https://files.pythonhosted.org/packages/60/d1/38f3a3405989a89ac18390803e70c6ad7c7760da4f9b83cbeca0c44a0c72/python_dotenv-1.2.4-py3-none-any.whl", hash = "sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc", size = 23266, upload-time = "2026-10-01T05:36:08.633Z" },
 ]
 
 [[package]]
 name = "python-multipart"
-version = "0.0.22"
+version = "0.0.33"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/94/01/979e98d542a70714b0cb2b6728ed0b7c46792b695e3eaec3e20711271ca3/python_multipart-0.0.22.tar.gz", hash = "sha256:7340bef99a7e0032613f56dc36027b959fd3b30a787ed62d310e951f7c3a3a58", size = 37612, upload-time = "2026-01-25T10:15:56.219Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9f/b7/15b905f6142a9a8a68f66900788da1a32e4d4254452783b37ad1eccb0506/python_multipart-0.0.33.tar.gz", hash = "sha256:b8112424a6abd162ec08d390565dd113ad699f2fe6fef3c987b8bbcbfe9e390d", size = 50499, upload-time = "2026-10-31T14:23:47.461Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1b/d0/397f9626e711ff749a95d96b7af99b9c566a9bb5129b8e4c10fc4d100304/python_multipart-0.0.22-py3-none-any.whl", hash = "sha256:2b2cd894c83d21bf49d702499531c7bafd057d730c201782048f7945d82de155", size = 24579, upload-time = "2026-01-25T10:15:54.811Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/1b/6b1b4164ec734cac911460ab599bfbe46afedd42c5c9627fe4235942c314/python_multipart-0.0.33-py3-none-any.whl", hash = "sha256:8f16c07b36add9da6b2ee87d3efcaf0a45a6de9c3d0a5dd94e9ccf7675a7bc45", size = 32253, upload-time = "2026-10-31T14:23:46.33Z" },
 ]
 
 [[package]]
@@ -1181,20 +1181,20 @@ wheels = [
 
 [[package]]
 name = "starlette"
-version = "0.52.1"
+version = "1.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/68/79977123bb7be889ad680d79a40f339082c1978b5cfcf62c2d8d196873ac/starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933", size = 2653702, upload-time = "2026-01-18T13:34:11.062Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/bb/3d8757f21e9a53d9035c9eb039a777047139a16bfdbedfc7a58241c3d914/starlette-1.10.0.tar.gz", hash = "sha256:b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b", size = 2734356, upload-time = "2026-10-24T15:04:12.342Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74", size = 74272, upload-time = "2026-01-18T13:34:09.188Z" },
+    { url = "https://files.pythonhosted.org/packages/88/2e/947cfe02def9371c07cd5bf5b6b61c829e9aecb9904db02a66cfafbc1eec/starlette-1.10.0-py3-none-any.whl", hash = "sha256:478c0ab3b4ced6e82719849c118fa406f0278a3499c1a898cd15cd31bdc38ce4", size = 80571, upload-time = "2026-10-24T15:04:10.371Z" },
 ]
 
 [[package]]
 name = "twilio"
-version = "9.10.2"
+version = "9.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1202,9 +1202,9 @@ dependencies = [
     { name = "pyjwt" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/a1/44cd8604eb69b1c5e7c0f07f0e4305b1884a3b75e23eb8d89350fe7bb982/twilio-9.10.2.tar.gz", hash = "sha256:f17d778870a7419a7278d5747b0e80a1c89e6f5ab14acf5456a004f8f2016bfa", size = 1618748, upload-time = "2026-02-18T04:40:44.279Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/6f/f892d801a16b1de21e03ec3786ded94599499193429dccae5e7f95489192/twilio-9.13.0.tar.gz", hash = "sha256:3d110011db53354b7fe8480b469db0d4fcf082fafb73b50820c7d7d6e1c9dac1", size = 1817289, upload-time = "2026-11-06T09:35:59.568Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/ac/e1937f70544075f896bfcd6b23fa7c15cad945e4598bcfa7017b7c120ad8/twilio-9.10.2-py2.py3-none-any.whl", hash = "sha256:8722bb59bacf31fab5725d6f5d3fac2224265c669d38f653f53179165533da43", size = 2256481, upload-time = "2026-02-18T04:40:42.226Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/50/069e982c83c8a864a97cb0a247562233b230686d8c201572d1054c541be5/twilio-9.13.0-py2.py3-none-any.whl", hash = "sha256:a73eb7139f47ed0ad934e9cf0a26cd0add6b86e6ca4aec5964624a9ea588c11c", size = 2527728, upload-time = "2026-11-06T09:35:57.824Z" },
 ]
 
 [[package]]
@@ -1239,20 +1239,19 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.41.0"
+version = "0.54.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "h11" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/ce/eeb58ae4ac36fe09e3842eb02e0eb676bf2c53ae062b98f1b2531673efdd/uvicorn-0.41.0.tar.gz", hash = "sha256:09d11cf7008da33113824ee5a1c6422d89fbc2ff476540d69a34c87fab8b571a", size = 82633, upload-time = "2026-02-16T23:07:24.1Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/34/30e9280707135d2cfc589dfff3cb796bd07a3aeb1a3e415ba09dd89d7bb4/uvicorn-0.54.0.tar.gz", hash = "sha256:a2e33cbfaa0306f8e6b0c13e0cb89d7d7a2da3e62b90c66e18c33d9807b28620", size = 112283, upload-time = "2026-09-25T06:52:37.601Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/e4/d04a086285c20886c0daad0e026f250869201013d18f81d9ff5eada73a88/uvicorn-0.41.0-py3-none-any.whl", hash = "sha256:29e35b1d2c36a04b9e180d4007ede3bcb32a85fbdfd6c6aeb3f26839de088187", size = 68783, upload-time = "2026-02-16T23:07:22.357Z" },
+    { url = "https://files.pythonhosted.org/packages/38/0c/b54a4fdd7f90a3af8b02ebc9ce6712c2c208b7926a2f7bad95c33ebbe943/uvicorn-0.54.0-py3-none-any.whl", hash = "sha256:505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf", size = 87427, upload-time = "2026-09-25T06:52:35.829Z" },
 ]
 
 [package.optional-dependencies]
 standard = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "httptools" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
