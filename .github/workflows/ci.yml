@@ -23,6 +23,7 @@ jobs:
           version: "0.10.9"
       - run: uv sync --frozen --extra dev
       - run: uv run ruff check src tests
+      - run: uv run mypy
       - run: uv run pytest
       - run: uv build
       - run: git diff --check

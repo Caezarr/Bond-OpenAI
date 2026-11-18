@@ -201,7 +201,10 @@ class VoiceAgentSession:
                 continue
 
             try:
-                parsed = parse_obj_as(V1SocketClientResponse, json.loads(raw_message))
+                parsed: Any = parse_obj_as(
+                    V1SocketClientResponse,  # type: ignore[arg-type]
+                    json.loads(raw_message),
+                )
             except Exception:
                 logger.debug("Ignoring an unsupported Deepgram event")
                 continue

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from .settings import Settings
+
+if TYPE_CHECKING:
+    from deepgram.agent.v1 import AgentV1Settings
 
 
 def build_system_prompt(intent: str, language: str = "en") -> str:
@@ -46,7 +51,9 @@ SECURITY
 """
 
 
-def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
+def build_agent_settings(
+    settings: Settings, intent: str, language: str = "en"
+) -> AgentV1Settings:
     """Build the typed Deepgram settings used by the official reference SDK."""
     from deepgram.agent.v1 import (
         AgentV1Settings,
@@ -103,13 +110,15 @@ def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
         # Flux end-of-turn tuning keeps the agent from ending a caller's turn on
         # short pauses or line noise. These live on the provider (extra fields
         # are accepted by the SDK model) per the Voice Agent v2 contract.
-        endpointing: dict[str, float | int] = {
+        endpointing: dict[str, Any] = {
             "eot_threshold": settings.eot_threshold,
             "eot_timeout_ms": settings.eot_timeout_ms,
         }
         if settings.eager_eot_threshold is not None:
             endpointing["eager_eot_threshold"] = settings.eager_eot_threshold
-        listen_provider = AgentV1SettingsAgentListenProvider_V2(
+        listen_provider: (
+            AgentV1SettingsAgentListenProvider_V1 | AgentV1SettingsAgentListenProvider_V2
+        ) = AgentV1SettingsAgentListenProvider_V2(
             version="v2",
             type="deepgram",
             model=settings.listen_model,
@@ -133,12 +142,14 @@ def build_agent_settings(settings: Settings, intent: str, language: str = "en"):
             ),
         ),
         agent=AgentV1SettingsAgent(
-            listen=AgentV1SettingsAgentListen(
+            # The SDK migrates this legacy listen model during validation.
+            listen=AgentV1SettingsAgentListen(  # type: ignore[arg-type]
                 provider=listen_provider
             ),
             think=ThinkSettingsV1(
                 provider=ThinkSettingsV1Provider_OpenAi(
-                    type=settings.llm_provider,
+                    # Pydantic validates the configured provider name at runtime.
+                    type=settings.llm_provider,  # type: ignore[arg-type]
                     model=settings.llm_model,
                 ),
                 prompt=build_system_prompt(clean_intent, language),
