@@ -1,114 +1,121 @@
-# Bond-OpenAI — actions vocales pour les agents logiciels
+# Bond-OpenAI : une action téléphonique sûre pour tout agent
+
+[![ci](https://github.com/Caezarr/Bond-OpenAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Caezarr/Bond-OpenAI/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 **Les agents savent lire, écrire et cliquer. Puis le workflow demande un coup de fil, et ils s'arrêtent.**
 
-Réserver un restaurant, relancer une administration, confirmer un rendez-vous,
-demander un devis à un fournisseur : dans énormément de workflows réels,
-l'étape bloquante n'est pas le raisonnement, c'est d'appeler quelqu'un.
-Bond-OpenAI lève ce blocage. Il donne à Bond, Codex et à tout agent compatible
-MCP une action téléphonique sûre, pour que l'agent termine la tâche au lieu de
-vous la rendre.
+Un serveur MCP local qui permet à Codex, Bond ou n'importe quel client MCP de passer un appel téléphonique consenti, confirmé par un humain et limité dans le temps, puis de récupérer un résultat structuré dans la tâche. Finaliste du hackathon OpenAI Codex.
 
-**Un serveur MCP local. N'importe quel agent compatible. Une tâche téléphonique réalisée.**
+*English: [README.md](README.md)*
 
-Clonez le dépôt, bootstrappez une fois, connectez le
-MCP, et laissez l'agent transformer une tâche telle que « appeler le restaurant
-et réserver une table » en une vraie conversation consentie.
+## Le problème
 
-## Le produit
+Réserver un restaurant, relancer une administration, confirmer un rendez-vous, demander un devis à un fournisseur : dans beaucoup de workflows réels, l'étape bloquante n'est pas le raisonnement, c'est d'appeler quelqu'un. L'agent prépare tout jusque-là, puis vous rend la tâche. Lui donner une API de téléphonie brute n'est pas la solution : rien ne l'empêche de composer le mauvais numéro, d'appeler deux fois lors d'un nouvel essai, d'enregistrer sans consentement ou de parler vingt minutes. L'appel doit être une action avec les garanties qu'on attend d'un assistant prudent.
+
+## Comment il le résout
+
+Bond-OpenAI expose le téléphone sous forme de quatre outils MCP avec un flux fixe : **classifier → clarifier → prévisualiser → confirmation explicite → appel vérifié → résultat structuré**.
 
 ```text
-Tâche Bond / prompt Codex
-        ↓
+Tâche d'agent (« appelle le restaurant et réserve une table »)
+        ↓  MCP sur stdio
 MCP local Bond-OpenAI
   classifier → clarifier → prévisualiser → confirmation explicite → appeler
         ↓
 Runtime téléphonique Fredo
-  Appelant vérifié Twilio + agent vocal Deepgram
+  identifiant d'appelant vérifié Twilio + agent vocal Deepgram, plafond 180 s
         ↓
-Résultat structuré retourné à la tâche d'origine
+Résultat structuré (statut, issue, résumé) renvoyé à la tâche
 ```
 
-Bond trouve le travail. Codex comprend l'intention. Fredo passe l'appel.
+Décisions de conception clés :
 
-## Démarrage rapide
+- **Création en deux temps.** `bond.create_phone_task` sans `confirmed: true` renvoie un aperçu et ne stocke rien. Un humain valide, l'agent répète l'appel avec `confirmed: true`. Rejeter l'aperçu signifie zéro appel opérateur.
+- **Règles hors du modèle.** Le consentement doit valoir littéralement `true` ; la destination doit être un numéro E.164 canonique présent dans une liste d'autorisation exacte ; l'identifiant d'appelant est toujours le numéro vérifié de l'opérateur. L'entrée de la tâche ne peut changer ni l'appelant, ni l'enregistrement, ni la durée.
+- **Idempotent et un seul appel à la fois.** Une clé d'idempotence est obligatoire ; un rejeu renvoie le résultat stocké, une charge modifiée est refusée, une tentative échouée n'est jamais recomposée. Un seul appel actif, garanti dans SQLite entre processus.
+- **Cœur neutre vis-à-vis des fournisseurs.** `policy`, `lifecycle` et `store` n'importent ni transport ni SDK fournisseur (verrouillé par un test). Twilio et Deepgram sont derrière l'interface `PhoneProvider`.
+
+## Essayer (2 minutes, sans identifiants)
+
+Prérequis : Python 3.12+ et [uv](https://docs.astral.sh/uv/) (le script de bootstrap installe uv s'il manque, et `cloudflared` via Homebrew si Homebrew est présent).
 
 ```bash
-git clone https://github.com/Caezarr/Bond-OpenAI.git
-cd Bond-OpenAI
+git clone https://github.com/Caezarr/Bond-OpenAI.git && cd Bond-OpenAI
 ./scripts/bootstrap.sh
-uv run bond-mcp doctor
-uv run bond-mcp serve
 ```
 
-La première exécution installe les dépendances épinglées et les outils locaux.
-L'utilisateur ne copie jamais de commandes shell depuis une réponse d'agent et
-ne met jamais de secret dans une tâche. Pour la démo publique, les identifiants
-fournisseur restent dans le relay opérateur et l'utilisateur n'a besoin que de
-la configuration publique `demo/profile.json`. Un fichier `.env` local n'est
-requis que lors de l'exécution directe du fournisseur.
+Sans clés fournisseur, le bootstrap se termine par un diagnostic, pas par une erreur à corriger :
 
-## Outils MCP
+```text
+  "mcp": "ready",
+  "missing": [ "DEEPGRAM_API_KEY", "TWILIO_ACCOUNT_SID", ... ]
+No demo relay profile is published. An operator must configure demo/profile.json or local provider variables.
+```
+
+Pilotez ensuite le MCP à la main en **mode mock** (opérateur simulé déterministe, aucun réseau). La session classe une tâche, demande un aperçu, le confirme, puis essaie un numéro absent de la liste d'autorisation :
+
+```bash
+cat > /tmp/bond-session.jsonl <<'EOF'
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"bond.classify_task","arguments":{"task_text":"Call +15555550100 and reserve a table for two at 8pm"}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"bond.create_phone_task","arguments":{"idempotency_key":"demo-1","task_input":{"task_id":"demo-1","caller_identity":"Assistant for Alex","destination_phone":"+15555550100","call_goal":"Reserve a table for two tonight at 8pm","consent_confirmed":true}}}}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"bond.create_phone_task","arguments":{"idempotency_key":"demo-1","task_input":{"task_id":"demo-1","caller_identity":"Assistant for Alex","destination_phone":"+15555550100","call_goal":"Reserve a table for two tonight at 8pm","consent_confirmed":true,"confirmed":true}}}}
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"bond.create_phone_task","arguments":{"idempotency_key":"demo-2","task_input":{"task_id":"demo-2","caller_identity":"x","destination_phone":"+15555550199","call_goal":"x","consent_confirmed":true,"confirmed":true}}}}
+EOF
+FREDO_TELEPHONY_PROVIDER=mock FREDO_ALLOWED_NUMBERS=+15555550100 FREDO_STATE_DIR="$(mktemp -d)" \
+  uv run bond-mcp serve < /tmp/bond-session.jsonl
+```
+
+`structuredContent` attendu pour les quatre réponses (le processus garde ensuite son serveur de rappels opérateur ouvert ; arrêtez-le avec Ctrl-C) :
+
+```text
+{"classification": "phone_call"}
+{"status": "needs_confirmation", "preview": {"destination_phone": "+15555550100", "caller_identity": "Assistant for Alex", "call_goal": "Reserve a table for two tonight at 8pm", "recorded": false, "max_duration_seconds": 180}}
+{"task_id": "demo-1", "call_id": "<uuid>", "status": "dialing", "outcome": null, "summary": null, "recorded": false, "error": null, "replayed": false}
+{"status": "error", "code": "destination_not_allowed", "message": "Destination is not pre-enrolled"}
+```
+
+Lancez la suite de tests hors ligne (opérateur simulé, aucun réseau) :
+
+```bash
+uv run pytest      # 90 passed
+```
+
+### Appels réels
+
+Un vrai appel PSTN demande un compte Twilio avec un numéro d'appelant vérifié (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`), une clé Deepgram (`DEEPGRAM_API_KEY`), une liste exacte de numéros consentants (`FREDO_ALLOWED_NUMBERS`), un secret de point de terminaison (`FREDO_ENDPOINT_SECRET`) et une URL de rappel HTTPS publique pour Twilio (`FREDO_PUBLIC_URL`). Voir [docs/ENV.md](docs/ENV.md) et [docs/TELEPHONY.md](docs/TELEPHONY.md). `uv run bond-mcp doctor` liste ce qui manque encore.
+
+Autre option : un opérateur héberge le [relay de démo](docs/DEMO-RELAY.md), qui détient les clés fournisseur ; les clients n'ont alors besoin que de l'URL du relay et d'un jeton limité dans `demo/profile.json`. Aucun relay public n'est configuré dans ce dépôt aujourd'hui.
+
+Pour connecter un agent, affichez son entrée MCP avec `uv run bond-mcp install --client codex|bond|generic --print` ([docs/MCP.md](docs/MCP.md)).
+
+## Fonctionnement
 
 | Outil | Rôle |
 | --- | --- |
-| `bond.classify_task(task_text, context)` | Indique si une tâche nécessite un appel (`phone_call`, `needs_input`, `not_phone_call`). Ne compose jamais. |
-| `bond.create_phone_task(task_input, idempotency_key)` | Sans `confirmed: true`, renvoie un aperçu et ne compose rien. Avec, passe exactement un appel par clé d'idempotence. |
-| `bond.get_phone_task_status(call_id)` | Renvoie le résultat structuré : statut, issue, résumé. |
+| `bond.classify_task(task_text, context)` | `phone_call`, `needs_input` ou `not_phone_call`. Ne compose jamais. |
+| `bond.create_phone_task(task_input, idempotency_key)` | Aperçu sans `confirmed: true` ; avec, exactement un appel par clé d'idempotence. |
+| `bond.get_phone_task_status(call_id)` | Résultat structuré : statut, issue, résumé. |
 | `bond.cancel_phone_task(call_id)` | Raccroche un appel actif. |
 
-Le même contrat fonctionne depuis Bond, Codex, un agent IDE ou n'importe quel
-client MCP. Les formats d'entrée et de résultat sont dans [schemas/](schemas/) ;
-la configuration client est dans [docs/MCP.md](docs/MCP.md), le flux jury sans
-identifiants dans [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md), et toutes les
-variables d'environnement dans [docs/ENV.md](docs/ENV.md).
+`server.py` est un adaptateur JSON-RPC mince ; `policy.py` valide et classe ; `lifecycle.py` (`PhoneTaskService`) gère aperçu, appel, statut et annulation ; `store.py` conserve les clés d'idempotence et le verrou d'appel unique dans SQLite. `fredo/` est le runtime opérateur : appels REST Twilio, rappel de statut signé et WebSocket média, et un pont vers une session Deepgram Voice Agent qui annonce être une voix synthétique, n'enregistre pas et raccroche en cas de silence. Les états terminaux ne sont jamais écrasés. Les formats d'entrée et de résultat sont dans [schemas/](schemas/).
 
-## Variables d'environnement
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (en anglais) se lit en cinq minutes : composants, machine à états d'un appel, frontières de confiance, et l'endroit où chaque invariant de sécurité est appliqué.
 
-Les variables d'environnement sont documentées dans [.env.example](.env.example) :
+## Preuves dans le dépôt
 
-- **DEEPGRAM_API_KEY** — clé API Deepgram pour la reconnaissance vocale, le dialogue et la synthèse vocale
-- **TWILIO_ACCOUNT_SID**, **TWILIO_AUTH_TOKEN**, **TWILIO_PHONE_NUMBER** — identifiants Twilio pour l'accès PSTN
-- **FREDO_ALLOWED_NUMBERS** — destinations consenties exactes, séparées par des virgules, format E.164 canonique
-- **FREDO_ENDPOINT_SECRET** — secret de point de terminaison (générer avec `openssl rand -hex 24`)
-- **FREDO_PUBLIC_URL** — URL de rappel HTTPS publique pour les tests média Twilio réels
-- **FREDO_DEMO_ENDPOINT**, **FREDO_DEMO_ACCESS_TOKEN** — mode jury sans identifiants (valeurs publiées dans `demo/profile.json`)
-- **FREDO_HOST**, **FREDO_PORT** — hôte et port du serveur (par défaut 127.0.0.1:8080)
-- **FREDO_MAX_DURATION_SECONDS**, **FREDO_MAX_CONCURRENT_CALLS** — limites de sécurité strictes (max 180 secondes, 1 appel concurrent)
-- **FREDO_LISTEN_MODEL**, **FREDO_LISTEN_LANGUAGE**, **FREDO_EOT_THRESHOLD**, **FREDO_EOT_TIMEOUT_MS** — configuration de l'agent vocal
-- **FREDO_LLM_PROVIDER**, **FREDO_LLM_MODEL** — fournisseur et modèle LLM (par défaut open_ai, gpt-4o-mini)
-- **FREDO_VOICE_MODEL** — modèle de synthèse vocale (par défaut aura-2-thalia-en)
-- **FREDO_TELEPHONY_PROVIDER** — fournisseur de téléphonie (vide pour auto-sélection du relay démo, `real` pour runtime opérateur local, `mock` pour tests)
+- **90 tests hors ligne** (`tests/`), sans réseau. Chaque invariant de sécurité de [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#safety-invariants) renvoie au code qui l'applique et est verrouillé par un test : consentement, liste d'autorisation, aperçu avant appel, idempotence et rejeu, pas de recomposition aveugle, un seul appel actif, plafond de 180 s, appelant vérifié, pas d'enregistrement, rappels signés, aucun secret dans les résultats.
+- **Contrôles statiques :** `ruff` (lint et format), `mypy`.
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) lance lint, format, mypy, pytest et `uv build` à chaque push et pull request.
+- Décision de conception : [docs/decisions/0001-verified-caller-identity.md](docs/decisions/0001-verified-caller-identity.md).
 
-## Sécurité par défaut
+## Limites et état
 
-- un consentement explicite du destinataire est requis ;
-- les destinations doivent être des numéros E.164 canoniques présents dans une liste d'autorisation exacte ;
-- seul l'identifiant d'appelant vérifié de l'opérateur est utilisé ;
-- un humain confirme l'aperçu avant la numérotation ; le rejeter signifie zéro appel opérateur ;
-- un seul appel actif, plafonné à 180 secondes à la fois par Twilio et par le runtime ;
-- l'enregistrement est désactivé, et l'agent annonce qu'il est une voix synthétique et n'enregistre pas ;
-- la création exige une clé d'idempotence ; une tentative échouée n'est jamais recomposée automatiquement ;
-- les rappels Twilio sont vérifiés par signature ;
-- l'audio brut, les secrets et les numéros complets ne figurent ni dans les journaux ni dans les résultats.
-
-L'endroit du code où chaque règle est appliquée, et les tests hors ligne qui les verrouillent,
-sont listés dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#safety-invariants) (en anglais).
-
-## Architecture
-
-```text
-src/bond_mcp/server.py      adaptateur MCP (JSON-RPC sur stdio)
-src/bond_mcp/lifecycle.py   cœur neutre : aperçu, appel, statut, annulation
-src/bond_mcp/policy.py      consentement, E.164, liste d'autorisation, classification
-src/bond_mcp/store.py       SQLite : idempotence + un seul appel actif
-src/bond_mcp/providers.py   Fredo (Twilio + Deepgram en local) ou relay démo
-src/fredo/                  runtime opérateur : téléphonie, agent vocal, gestion des silences
-```
-
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) se lit en cinq minutes :
-composants, machine à états d'un appel, frontières de confiance et invariants
-de sécurité.
+- Un appel à la fois, 180 secondes au maximum. C'est une action encadrée, pas un composeur automatique, et il n'y a pas d'appels en masse non surveillés.
+- La reconnaissance vocale, le dialogue et la synthèse sont hébergés par Deepgram ; le PSTN passe par Twilio. Aucune inférence locale, pas d'enregistrement ni de clonage vocal.
+- Le statut est cohérent à terme entre rappels et interrogations ; la première valeur terminale l'emporte.
+- Le stockage SQLite est local à une machine ; le relay de démo a son propre stockage.
+- Version 0.1.0. Versions et alternatives des fournisseurs : [docs/PROVIDER-MATRIX.md](docs/PROVIDER-MATRIX.md).
 
 ## Développement
 
@@ -120,34 +127,8 @@ uv run pytest        # hors ligne : opérateur simulé, aucun réseau
 uv build
 ```
 
-## Démo locale
+Aide et signalement sûr des problèmes : [SUPPORT.md](SUPPORT.md), [SECURITY.md](SECURITY.md). Contributions : [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Le répertoire [demo/](demo/) contient les profils de configuration pour les tests locaux :
+## Licence
 
-- **profile.example.json** — modèle de configuration
-- **profile.json** — profil actif (pointer vers le relay démo ou configurer un runtime local)
-
-Pour la démonstration publique, les clés Twilio et Deepgram restent dans le
-relay opérateur. Une machine de jury n'a besoin d'aucune clé API si
-`demo/profile.json` pointe vers le relay. Voir [docs/DEMO-RELAY.md](docs/DEMO-RELAY.md).
-
-## Support
-
-Besoin d'aide pour l'installation, la configuration ou les connexions MCP ? Voir
-[SUPPORT.md](SUPPORT.md) pour les liens de documentation et comment poser des
-questions en toute sécurité.
-
-Bond-OpenAI est un logiciel libre. Considérez [parrainer le développement sur GitHub](https://github.com/sponsors/Caezarr).
-
-## Objectifs du projet
-
-- [GOAL-BOND-MCP.md](docs/goals/GOAL-BOND-MCP.md) — logiciel et contrat MCP.
-- [GOAL-BOND-DESIGN.md](docs/goals/GOAL-BOND-DESIGN.md) — site web, présentation et système visuel.
-- [GOAL-BOND-VOICE.md](docs/goals/GOAL-BOND-VOICE.md) — index des objectifs.
-
-## Limite du runtime actuel
-
-Le moteur téléphonique actuel utilise Twilio pour l'accès PSTN et Deepgram pour
-la reconnaissance vocale hébergée, le dialogue et la synthèse vocale. Le MCP
-lui-même s'exécute localement. Ce dépôt ne revendique pas d'inférence locale,
-d'enregistrement, de clonage vocal ou d'appels en masse non surveillés.
+[Apache License 2.0](LICENSE). Mentions tierces : [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
