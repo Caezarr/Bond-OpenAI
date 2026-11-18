@@ -1,10 +1,16 @@
+"""Operator-hosted demo relay: a bearer-token HTTP front for the phone lifecycle.
+
+The relay holds the real Twilio/Deepgram credentials so a jury machine needs only
+a scoped demo token. It re-applies the same policy, idempotency and confirmation
+checks as the local MCP by delegating to ``PhoneTaskService``.
+"""
+
 from __future__ import annotations
 
 import hmac
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Any
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -13,20 +19,11 @@ from starlette.routing import Route
 
 from fredo.settings import Settings
 
-from .models import TaskState
+from .lifecycle import PhoneTaskService, ProviderFailed, error_code
 from .policy import Policy, PolicyError, build_task
 from .providers import PhoneProvider, provider_from_settings
 from .runtime import create_runtime_app
 from .store import ActiveCall, IdempotencyConflict, TaskStore
-
-
-TERMINAL = {
-    TaskState.COMPLETED,
-    TaskState.NO_ANSWER,
-    TaskState.DECLINED,
-    TaskState.FAILED,
-    TaskState.CANCELLED,
-}
 
 
 @dataclass(slots=True)
@@ -52,9 +49,17 @@ class DemoRelay:
     store: TaskStore
     provider: PhoneProvider
     limiter: RelayRateLimiter = field(default_factory=RelayRateLimiter)
+    service: PhoneTaskService = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.service = PhoneTaskService(
+            policy=Policy(self.settings.allowed_numbers),
+            store=self.store,
+            provider=self.provider,
+        )
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> "DemoRelay":
+    def from_settings(cls, settings: Settings) -> DemoRelay:
         if settings.telephony_provider not in {"real", "mock"}:
             raise ValueError("The relay must use FREDO_TELEPHONY_PROVIDER=real")
         if not settings.demo_access_token:
@@ -95,52 +100,35 @@ class DemoRelay:
             body = await request.json()
             if not isinstance(body, dict):
                 return JSONResponse({"error": "invalid_request"}, status_code=400)
-            task_payload = body.get("task")
-            task = build_task(task_payload, Policy(self.settings.allowed_numbers))
-            if not task.confirmed:
-                raise PolicyError("confirmation_required", "A confirmed preview is required")
-            remote_call_id, result, replayed = self.store.reserve(task)
-            if not replayed:
-                try:
-                    result.provider_call_id = await self.provider.create_call(task, remote_call_id)
-                    result.status = TaskState.DIALING
-                    self.store.update(result)
-                except Exception:
-                    result.status = TaskState.FAILED
-                    result.error = "phone provider rejected the call"
-                    self.store.update(result)
-                    return JSONResponse({"error": "provider_unavailable"}, status_code=502)
-            payload = result.as_dict()
-            payload["replayed"] = replayed
-            return JSONResponse(payload, status_code=200)
+            task = build_task(body.get("task"), self.service.policy)
+            # dial() rejects unconfirmed tasks: the relay never serves previews.
+            result, replayed = await self.service.dial(task)
+        except ProviderFailed:
+            return JSONResponse({"error": "provider_unavailable"}, status_code=502)
         except (PolicyError, IdempotencyConflict, ActiveCall) as exc:
-            code = getattr(exc, "code", "idempotency_conflict" if isinstance(exc, IdempotencyConflict) else "call_busy")
-            return JSONResponse({"error": code, "message": str(exc)}, status_code=409)
+            return JSONResponse({"error": error_code(exc), "message": str(exc)}, status_code=409)
         except (TypeError, ValueError):
             return JSONResponse({"error": "invalid_request"}, status_code=400)
+        payload = result.as_dict()
+        payload["replayed"] = replayed
+        return JSONResponse(payload, status_code=200)
 
     async def get_call(self, request: Request) -> JSONResponse:
         auth_error = self._guard(request)
         if auth_error:
             return auth_error
-        result = self.store.get(request.path_params["call_id"])
+        result = await self.service.status(request.path_params["call_id"])
         if result is None:
             return JSONResponse({"error": "not_found"}, status_code=404)
-        await self._refresh(result)
         return JSONResponse(result.as_dict())
 
     async def cancel_call(self, request: Request) -> JSONResponse:
         auth_error = self._guard(request)
         if auth_error:
             return auth_error
-        result = self.store.get(request.path_params["call_id"])
+        result = await self.service.cancel(request.path_params["call_id"])
         if result is None:
             return JSONResponse({"error": "not_found"}, status_code=404)
-        if result.status not in TERMINAL:
-            if result.provider_call_id:
-                await self.provider.cancel_call(result.provider_call_id)
-            result.status = TaskState.CANCELLED
-            self.store.update(result)
         return JSONResponse(result.as_dict())
 
     def _guard(self, request: Request) -> JSONResponse | None:
@@ -149,32 +137,6 @@ class DemoRelay:
         if self._rate_limited(request):
             return JSONResponse({"error": "rate_limited"}, status_code=429)
         return None
-
-    async def _refresh(self, result: Any) -> None:
-        if not result.provider_call_id or result.status in TERMINAL:
-            return
-        try:
-            status = await self.provider.get_status(result.provider_call_id)
-        except Exception:
-            return
-        mapped = {
-            "queued": TaskState.DIALING,
-            "initiated": TaskState.DIALING,
-            "ringing": TaskState.DIALING,
-            "dialing": TaskState.DIALING,
-            "in-progress": TaskState.IN_PROGRESS,
-            "in_progress": TaskState.IN_PROGRESS,
-            "completed": TaskState.COMPLETED,
-            "busy": TaskState.DECLINED,
-            "no-answer": TaskState.NO_ANSWER,
-            "no_answer": TaskState.NO_ANSWER,
-            "canceled": TaskState.CANCELLED,
-            "cancelled": TaskState.CANCELLED,
-            "failed": TaskState.FAILED,
-        }.get(status)
-        if mapped and mapped != result.status:
-            result.status = mapped
-            self.store.update(result)
 
 
 def create_demo_relay_app(settings: Settings | None = None) -> Starlette:

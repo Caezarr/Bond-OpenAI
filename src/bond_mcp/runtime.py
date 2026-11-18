@@ -1,8 +1,18 @@
+"""Carrier-facing runtime: Twilio status callbacks and the media WebSocket.
+
+Binds the provider-neutral task store to the Fredo voice agent. Every inbound
+request is authenticated (Twilio signature or local endpoint secret) before it
+can change a task, and terminal task states are never overwritten.
+"""
+
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import threading
+from collections.abc import Mapping
+from typing import Any
 from urllib.parse import urlsplit
 
 from starlette.applications import Starlette
@@ -12,16 +22,19 @@ from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from uvicorn import Config, Server
 
+from fredo.security import validate_twilio_signature
+from fredo.settings import Settings
 from fredo.telephony import telephony_from_settings
 from fredo.voice_agent import VoiceAgentSession
 
-from .models import TaskState
+from .lifecycle import TWILIO_CALLBACK_STATES
+from .models import TERMINAL_STATES, TaskState
 from .store import TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-def create_runtime_app(settings, store: TaskStore) -> Starlette:
+def create_runtime_app(settings: Settings, store: TaskStore) -> Starlette:
     telephony = telephony_from_settings(settings)
 
     async def health(request: Request) -> JSONResponse:
@@ -36,23 +49,14 @@ def create_runtime_app(settings, store: TaskStore) -> Starlette:
         form = await request.form()
         supplied = request.headers.get("authorization", "")
         signature = request.headers.get("x-twilio-signature", "")
-        local_auth = settings.endpoint_secret and supplied == f"Bearer {settings.endpoint_secret}"
+        local_auth = bool(settings.endpoint_secret) and hmac.compare_digest(
+            supplied, f"Bearer {settings.endpoint_secret}"
+        )
         twilio_auth = _valid_twilio_http(settings, request, form, signature)
         if not (local_auth or twilio_auth):
             return JSONResponse({"error": "unauthorized"}, status_code=401)
-        call_status = str(form.get("CallStatus", ""))
-        mapped = {
-            "queued": TaskState.DIALING,
-            "initiated": TaskState.DIALING,
-            "ringing": TaskState.DIALING,
-            "in-progress": TaskState.IN_PROGRESS,
-            "completed": TaskState.COMPLETED,
-            "busy": TaskState.DECLINED,
-            "no-answer": TaskState.NO_ANSWER,
-            "canceled": TaskState.CANCELLED,
-            "failed": TaskState.FAILED,
-        }.get(call_status)
-        if mapped and result.status not in {TaskState.COMPLETED, TaskState.NO_ANSWER, TaskState.DECLINED, TaskState.FAILED, TaskState.CANCELLED}:
+        mapped = TWILIO_CALLBACK_STATES.get(str(form.get("CallStatus", "")))
+        if mapped and result.status not in TERMINAL_STATES:
             result.status = mapped
             store.update(result)
         return JSONResponse({"ok": True})
@@ -83,6 +87,7 @@ def create_runtime_app(settings, store: TaskStore) -> Starlette:
             store.update(result)
 
             async def on_transcript(_role: str, _content: str) -> None:
+                # Transcripts are deliberately not retained or logged.
                 return
 
             async def on_outcome(outcome: dict[str, object]) -> None:
@@ -117,36 +122,35 @@ def create_runtime_app(settings, store: TaskStore) -> Starlette:
     )
 
 
-def _valid_twilio_signature(settings, websocket: WebSocket, signature: str) -> bool:
-    try:
-        from twilio.request_validator import RequestValidator
-
-        public_url = settings.public_url or ""
-        query = urlsplit(str(websocket.url)).query
-        url = public_url.rstrip("/") + "/twilio/media"
-        if query:
-            url += "?" + query
-        return RequestValidator(settings.twilio_auth_token).validate(url, {}, signature)
-    except Exception:
+def _valid_twilio_signature(settings: Settings, websocket: WebSocket, signature: str) -> bool:
+    if not settings.twilio_auth_token:
         return False
+    url = (settings.public_url or "").rstrip("/") + "/twilio/media"
+    query = urlsplit(str(websocket.url)).query
+    if query:
+        url += "?" + query
+    return validate_twilio_signature(settings.twilio_auth_token, url, {}, signature)
 
 
-def _valid_twilio_http(settings, request: Request, form, signature: str) -> bool:
+def _valid_twilio_http(
+    settings: Settings, request: Request, form: Mapping[str, Any], signature: str
+) -> bool:
     if not settings.twilio_auth_token or not signature:
         return False
-    try:
-        from twilio.request_validator import RequestValidator
-
-        url = settings.public_url.rstrip("/") + "/twilio/status" if settings.public_url else str(request.url)
-        if request.url.query:
-            url += "?" + request.url.query
-        return RequestValidator(settings.twilio_auth_token).validate(url, dict(form), signature)
-    except Exception:
-        return False
+    if settings.public_url:
+        url = settings.public_url.rstrip("/") + "/twilio/status"
+    else:
+        url = str(request.url)
+    if request.url.query:
+        url += "?" + request.url.query
+    params = {key: str(value) for key, value in form.items()}
+    return validate_twilio_signature(settings.twilio_auth_token, url, params, signature)
 
 
 class RuntimeThread:
-    def __init__(self, settings, store: TaskStore):
+    """Serve the runtime app on a daemon thread beside the stdio MCP loop."""
+
+    def __init__(self, settings: Settings, store: TaskStore):
         self.settings = settings
         self.store = store
         self.thread: threading.Thread | None = None

@@ -323,9 +323,8 @@ def test_rejected_preview_never_calls_provider(tmp_path: Path) -> None:
             del provider_call_id
 
     settings = Settings(allowed_numbers=frozenset({"+33600000000"}))
-    server = McpServer(settings, store_path=tmp_path / "tasks.sqlite3")
     provider = CountingProvider()
-    server.provider = provider
+    server = McpServer(settings, store_path=tmp_path / "tasks.sqlite3", provider=provider)
     response = asyncio.run(
         server.handle(
             {
@@ -369,9 +368,8 @@ def test_confirmed_task_calls_provider_once_and_replays(tmp_path: Path) -> None:
             del provider_call_id
 
     settings = Settings(allowed_numbers=frozenset({"+33600000000"}))
-    server = McpServer(settings, store_path=tmp_path / "tasks.sqlite3")
     provider = CountingProvider()
-    server.provider = provider
+    server = McpServer(settings, store_path=tmp_path / "tasks.sqlite3", provider=provider)
     arguments = {
         "name": "bond.create_phone_task",
         "arguments": {

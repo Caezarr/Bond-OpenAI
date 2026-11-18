@@ -1,3 +1,9 @@
+"""SQLite task store: idempotency keys and the single-active-call guard.
+
+``reserve`` runs inside ``BEGIN IMMEDIATE`` so two local MCP processes sharing
+the state directory cannot both pass the active-call check and dial twice.
+"""
+
 from __future__ import annotations
 
 import json
@@ -5,17 +11,18 @@ import sqlite3
 from dataclasses import asdict
 from pathlib import Path
 from threading import Lock
+from typing import Any
 from uuid import uuid4
 
-from .models import PhoneResult, PhoneTask, TaskState
+from .models import TERMINAL_STATES, PhoneResult, PhoneTask, TaskState
 
 
 class IdempotencyConflict(RuntimeError):
-    pass
+    """An idempotency key was reused with a different task payload."""
 
 
 class ActiveCall(RuntimeError):
-    pass
+    """Another task is still active; the one-call-at-a-time limit applies."""
 
 
 class TaskStore:
@@ -50,13 +57,7 @@ class TaskStore:
                     raise IdempotencyConflict("Idempotency key was reused with a different task")
                 return existing[0], PhoneResult(**_decode_result(existing[2])), True
             active = db.execute("SELECT result FROM phone_tasks").fetchall()
-            if any(_decode_result(row[0])["status"] not in {
-                TaskState.COMPLETED,
-                TaskState.NO_ANSWER,
-                TaskState.DECLINED,
-                TaskState.FAILED,
-                TaskState.CANCELLED,
-            } for row in active):
+            if any(_decode_result(row[0])["status"] not in TERMINAL_STATES for row in active):
                 raise ActiveCall("Another phone task is already active")
             call_id = str(uuid4())
             result = PhoneResult(task_id=task.task_id, call_id=call_id, status=TaskState.CONFIRMED)
@@ -86,8 +87,8 @@ class TaskStore:
         return result
 
 
-def _decode_result(raw: str) -> dict[str, object]:
-    data = json.loads(raw)
+def _decode_result(raw: str) -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(raw)
     data["status"] = TaskState(data["status"])
     return data
 
