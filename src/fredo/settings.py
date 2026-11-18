@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
 import json
-from dataclasses import dataclass, field, replace
+import os
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping
 
 from dotenv import load_dotenv
 
@@ -83,7 +83,7 @@ class Settings:
     state_dir: Path = Path(".local-state")
 
     @classmethod
-    def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
+    def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
         if environ is None:
             load_dotenv()
             env: Mapping[str, str] = os.environ
@@ -166,9 +166,6 @@ class Settings:
             demo_access_token=demo_access_token,
             state_dir=state_dir,
         )
-
-    def with_public_url(self, public_url: str) -> "Settings":
-        return replace(self, public_url=public_url.rstrip("/"))
 
     def missing_for_real_call(self) -> list[str]:
         if self.telephony_provider == "demo":

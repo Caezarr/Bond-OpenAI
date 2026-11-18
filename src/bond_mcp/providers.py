@@ -1,11 +1,17 @@
+"""Phone providers: the seam between the provider-neutral core and a carrier.
+
+``FredoProvider`` drives the local Twilio + Deepgram runtime; ``DemoProvider``
+forwards confirmed tasks to the operator-hosted relay with a scoped token.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from types import SimpleNamespace
 from typing import Protocol
 
 import httpx
 
+from fredo.models import CallRequest
 from fredo.settings import Settings
 from fredo.telephony import Telephony, telephony_from_settings
 
@@ -26,13 +32,13 @@ class FredoProvider:
     telephony: Telephony
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> "FredoProvider":
+    def from_settings(cls, settings: Settings) -> FredoProvider:
         return cls(settings=settings, telephony=telephony_from_settings(settings))
 
     async def create_call(self, task: PhoneTask, call_id: str) -> str:
-        # The existing media bridge reads only `to` and `intent`; the MCP keeps
+        # The carrier transport receives only `to` and `intent`; the MCP keeps
         # its own provider-neutral task contract at this boundary.
-        request = SimpleNamespace(to=task.destination_phone, intent=task.call_goal)
+        request = CallRequest(to=task.destination_phone, intent=task.call_goal)
         return await self.telephony.place_call(request, call_id)
 
     async def get_status(self, provider_call_id: str) -> str:
