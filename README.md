@@ -2,6 +2,11 @@
 
 [![ci](https://github.com/Caezarr/Bond-OpenAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Caezarr/Bond-OpenAI/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![OpenAI Codex Hackathon: finalist](https://img.shields.io/badge/OpenAI_Codex_Hackathon-finalist-412991)](README.md)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776AB.svg)](pyproject.toml)
+[![MCP server](https://img.shields.io/badge/MCP-server-000000.svg)](https://modelcontextprotocol.io)
+[![mypy: strict](https://img.shields.io/badge/mypy-strict-2a6db2.svg)](pyproject.toml)
+[![lint: ruff](https://img.shields.io/badge/lint-ruff-261230.svg)](pyproject.toml)
 
 **Agents can read, write and click. Then the workflow needs a phone call, and they stop.**
 
