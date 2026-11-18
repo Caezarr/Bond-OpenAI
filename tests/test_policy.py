@@ -26,7 +26,9 @@ def test_policy_normalizes_allowlist_and_rejects_invalid_entries() -> None:
 
 
 def test_formatted_destination_matches_canonical_allowlist_entry() -> None:
-    task = build_task(task_payload(destination_phone="+33 (6) 00-00-00-00"), Policy(frozenset({ALLOWED})))
+    task = build_task(
+        task_payload(destination_phone="+33 (6) 00-00-00-00"), Policy(frozenset({ALLOWED}))
+    )
     assert task.destination_phone == ALLOWED
 
 

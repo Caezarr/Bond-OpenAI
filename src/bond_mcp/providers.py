@@ -70,7 +70,9 @@ class DemoProvider:
     async def create_call(self, task: PhoneTask, call_id: str) -> str:
         body = {"task": task.as_dict(), "client_call_id": call_id}
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self.transport) as client:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds, transport=self.transport
+            ) as client:
                 response = await client.post(
                     f"{self.endpoint.rstrip('/')}/v1/calls",
                     headers=self._headers(),
@@ -87,7 +89,9 @@ class DemoProvider:
 
     async def get_status(self, provider_call_id: str) -> str:
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self.transport) as client:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds, transport=self.transport
+            ) as client:
                 response = await client.get(
                     f"{self.endpoint.rstrip('/')}/v1/calls/{provider_call_id}",
                     headers=self._headers(),
@@ -103,7 +107,9 @@ class DemoProvider:
 
     async def cancel_call(self, provider_call_id: str) -> None:
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self.transport) as client:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds, transport=self.transport
+            ) as client:
                 response = await client.post(
                     f"{self.endpoint.rstrip('/')}/v1/calls/{provider_call_id}/cancel",
                     headers=self._headers(),

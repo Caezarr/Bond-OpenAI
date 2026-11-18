@@ -35,7 +35,9 @@ async def test_notifications_and_unknown_methods(server: McpServer) -> None:
 
 
 async def test_classify_tool_never_dials(server: McpServer, provider: FakeProvider) -> None:
-    response = await server.handle(tool_call("bond.classify_task", {"task_text": "Call +33600000000"}))
+    response = await server.handle(
+        tool_call("bond.classify_task", {"task_text": "Call +33600000000"})
+    )
     assert _content(response) == {"classification": "phone_call"}
     assert provider.created == []
 
@@ -100,12 +102,18 @@ async def test_provider_failure_surfaces_as_tool_error(
 async def test_status_and_cancel_tools(server: McpServer, provider: FakeProvider) -> None:
     created = _content(await server.handle(create_call(task_payload(confirmed=True))))
     call_id = created["call_id"]
-    status = _content(await server.handle(tool_call("bond.get_phone_task_status", {"call_id": call_id})))
+    status = _content(
+        await server.handle(tool_call("bond.get_phone_task_status", {"call_id": call_id}))
+    )
     assert status["status"] == "dialing"
     assert "provider_call_id" not in status
-    cancelled = _content(await server.handle(tool_call("bond.cancel_phone_task", {"call_id": call_id})))
+    cancelled = _content(
+        await server.handle(tool_call("bond.cancel_phone_task", {"call_id": call_id}))
+    )
     assert cancelled["status"] == "cancelled"
-    missing = _content(await server.handle(tool_call("bond.cancel_phone_task", {"call_id": "nope"})))
+    missing = _content(
+        await server.handle(tool_call("bond.cancel_phone_task", {"call_id": "nope"}))
+    )
     assert missing["code"] == "not_found"
     unknown = _content(await server.handle(tool_call("bond.unknown", {})))
     assert unknown["code"] == "unknown_tool"

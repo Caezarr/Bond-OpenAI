@@ -31,7 +31,9 @@ def _body(**overrides: object) -> dict[str, object]:
     return {"task": task_payload(**values)}
 
 
-def test_relay_requires_token_and_refreshes_status(relay: DemoRelay, provider: FakeProvider) -> None:
+def test_relay_requires_token_and_refreshes_status(
+    relay: DemoRelay, provider: FakeProvider
+) -> None:
     provider.status = "completed"
     with TestClient(relay.app()) as client:
         assert client.post("/v1/calls", json=_body()).status_code == 401

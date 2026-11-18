@@ -37,8 +37,8 @@ def build_twiml(public_url: str, call_id: str) -> str:
     safe_call_id = html.escape(call_id, quote=True)
     return (
         '<?xml version="1.0" encoding="UTF-8"?>'
-        "<Response><Connect><Stream url=\""
-        f"{stream_url}\"><Parameter name=\"fredoCallId\" value=\"{safe_call_id}\" />"
+        '<Response><Connect><Stream url="'
+        f'{stream_url}"><Parameter name="fredoCallId" value="{safe_call_id}" />'
         "</Stream></Connect></Response>"
     )
 

@@ -57,6 +57,4 @@ def tool_call(name: str, arguments: dict[str, Any], request_id: int = 1) -> dict
 
 
 def create_call(task_input: dict[str, Any], key: str = "key-1") -> dict[str, Any]:
-    return tool_call(
-        "bond.create_phone_task", {"idempotency_key": key, "task_input": task_input}
-    )
+    return tool_call("bond.create_phone_task", {"idempotency_key": key, "task_input": task_input})

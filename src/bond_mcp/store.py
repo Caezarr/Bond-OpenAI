@@ -63,26 +63,39 @@ class TaskStore:
             result = PhoneResult(task_id=task.task_id, call_id=call_id, status=TaskState.CONFIRMED)
             db.execute(
                 "INSERT INTO phone_tasks VALUES (?, ?, ?, ?, ?)",
-                (call_id, task.task_id, key, json.dumps(task.as_dict()), json.dumps(asdict(result))),
+                (
+                    call_id,
+                    task.task_id,
+                    key,
+                    json.dumps(task.as_dict()),
+                    json.dumps(asdict(result)),
+                ),
             )
             db.commit()
             return call_id, result, False
 
     def get(self, call_id: str) -> PhoneResult | None:
         with sqlite3.connect(self.path) as db:
-            row = db.execute("SELECT result FROM phone_tasks WHERE call_id = ?", (call_id,)).fetchone()
+            row = db.execute(
+                "SELECT result FROM phone_tasks WHERE call_id = ?", (call_id,)
+            ).fetchone()
         return PhoneResult(**_decode_result(row[0])) if row else None
 
     def get_task(self, call_id: str) -> PhoneTask | None:
         with sqlite3.connect(self.path) as db:
-            row = db.execute("SELECT payload FROM phone_tasks WHERE call_id = ?", (call_id,)).fetchone()
+            row = db.execute(
+                "SELECT payload FROM phone_tasks WHERE call_id = ?", (call_id,)
+            ).fetchone()
         if not row:
             return None
         return PhoneTask(**json.loads(row[0]))
 
     def update(self, result: PhoneResult) -> PhoneResult:
         with self._lock, sqlite3.connect(self.path) as db:
-            db.execute("UPDATE phone_tasks SET result = ? WHERE call_id = ?", (json.dumps(asdict(result)), result.call_id))
+            db.execute(
+                "UPDATE phone_tasks SET result = ? WHERE call_id = ?",
+                (json.dumps(asdict(result)), result.call_id),
+            )
             db.commit()
         return result
 

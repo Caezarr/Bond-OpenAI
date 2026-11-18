@@ -51,9 +51,7 @@ SECURITY
 """
 
 
-def build_agent_settings(
-    settings: Settings, intent: str, language: str = "en"
-) -> AgentV1Settings:
+def build_agent_settings(settings: Settings, intent: str, language: str = "en") -> AgentV1Settings:
     """Build the typed Deepgram settings used by the official reference SDK."""
     from deepgram.agent.v1 import (
         AgentV1Settings,
@@ -137,9 +135,7 @@ def build_agent_settings(
         type="Settings",
         audio=AgentV1SettingsAudio(
             input=AgentV1SettingsAudioInput(encoding="mulaw", sample_rate=8000),
-            output=AgentV1SettingsAudioOutput(
-                encoding="mulaw", sample_rate=8000, container="none"
-            ),
+            output=AgentV1SettingsAudioOutput(encoding="mulaw", sample_rate=8000, container="none"),
         ),
         agent=AgentV1SettingsAgent(
             # The SDK migrates this legacy listen model during validation.
@@ -162,13 +158,17 @@ def build_agent_settings(
                 )
             ),
             greeting=(
-                ("Bonjour, je suis Fredo, une voix synthétique automatisée. "
-                 "Cet appel n'est pas enregistré. "
-                 f"J'appelle au sujet de cette demande : {clean_intent}.")
+                (
+                    "Bonjour, je suis Fredo, une voix synthétique automatisée. "
+                    "Cet appel n'est pas enregistré. "
+                    f"J'appelle au sujet de cette demande : {clean_intent}."
+                )
                 if language == "fr"
-                else ("Hello, I am Fredo, an automated synthetic voice. "
-                      "This call is not recorded. "
-                      f"I am calling about this request: {clean_intent}.")
+                else (
+                    "Hello, I am Fredo, an automated synthetic voice. "
+                    "This call is not recorded. "
+                    f"I am calling about this request: {clean_intent}."
+                )
             ),
         ),
     )
