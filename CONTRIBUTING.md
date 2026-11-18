@@ -1,7 +1,7 @@
 # Contributing
 
-Read [README.md](README.md), [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md),
-[GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) and [SECURITY.md](SECURITY.md).
+Read [README.md](README.md), [GOAL-BOND-MCP.md](docs/goals/GOAL-BOND-MCP.md),
+[GOAL-BOND-DESIGN.md](docs/goals/GOAL-BOND-DESIGN.md) and [SECURITY.md](SECURITY.md).
 
 - Keep the MCP local, generic and easy to connect to any compatible client.
 - Keep Bond-specific translation at the adapter boundary.

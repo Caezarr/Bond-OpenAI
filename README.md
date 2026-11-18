@@ -1,9 +1,16 @@
 # Bond-OpenAI — voice actions for every software agent
 
+**Agents can read, write and click. Then the workflow needs a phone call, and they stop.**
+
+Booking a restaurant, chasing an administration, confirming an appointment,
+asking a supplier for a quote: in a huge number of real workflows the blocking
+step is not the reasoning, it is calling a person. Bond-OpenAI removes that
+blocker. It gives Bond, Codex and any MCP-compatible agent a safe telephone
+action, so the agent can finish the task instead of handing it back to you.
+
 **One local MCP server. Any compatible agent. One phone task completed.**
 
-Bond-OpenAI gives Bond, Codex and other MCP-compatible software a safe
-telephone action. Clone the repository, bootstrap once, connect the MCP, and
+Clone the repository, bootstrap once, connect the MCP, and
 let the agent turn a task such as “call the restaurant and reserve a table”
 into a real consented conversation.
 
@@ -79,9 +86,9 @@ Bond-OpenAI is free software. Consider [sponsoring development on GitHub](https:
 
 ## Project goals
 
-- [GOAL-BOND-MCP.md](GOAL-BOND-MCP.md) — software and MCP contract.
-- [GOAL-BOND-DESIGN.md](GOAL-BOND-DESIGN.md) — website, deck and visual system.
-- [GOAL-BOND-VOICE.md](GOAL-BOND-VOICE.md) — goal index.
+- [GOAL-BOND-MCP.md](docs/goals/GOAL-BOND-MCP.md) — software and MCP contract.
+- [GOAL-BOND-DESIGN.md](docs/goals/GOAL-BOND-DESIGN.md) — website, deck and visual system.
+- [GOAL-BOND-VOICE.md](docs/goals/GOAL-BOND-VOICE.md) — goal index.
 
 ## Current runtime boundary
 
