@@ -15,6 +15,8 @@ Verify changes with:
 ```bash
 uv sync --frozen --extra dev
 uv run ruff check src tests
+uv run ruff format --check src tests
+uv run mypy
 uv run pytest
 uv build
 git diff --check
