@@ -1,9 +1,17 @@
 # Bond-OpenAI — actions vocales pour les agents logiciels
 
+**Les agents savent lire, écrire et cliquer. Puis le workflow demande un coup de fil, et ils s'arrêtent.**
+
+Réserver un restaurant, relancer une administration, confirmer un rendez-vous,
+demander un devis à un fournisseur : dans énormément de workflows réels,
+l'étape bloquante n'est pas le raisonnement, c'est d'appeler quelqu'un.
+Bond-OpenAI lève ce blocage. Il donne à Bond, Codex et à tout agent compatible
+MCP une action téléphonique sûre, pour que l'agent termine la tâche au lieu de
+vous la rendre.
+
 **Un serveur MCP local. N'importe quel agent compatible. Une tâche téléphonique réalisée.**
 
-Bond-OpenAI donne à Bond, Codex et aux autres logiciels compatibles MCP une
-action téléphonique sûre. Clonez le dépôt, bootstrappez une fois, connectez le
+Clonez le dépôt, bootstrappez une fois, connectez le
 MCP, et laissez l'agent transformer une tâche telle que « appeler le restaurant
 et réserver une table » en une vraie conversation consentie.
 
